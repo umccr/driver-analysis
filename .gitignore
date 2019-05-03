@@ -1,0 +1,13 @@
+######################
+# Generic .gitignore #
+######################
+
+# OS generated files #
+######################
+*.DS_Store
+
+
+# R generated files #
+######################
+*.Rhistory
+
