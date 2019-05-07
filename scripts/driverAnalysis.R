@@ -20,6 +20,8 @@
 #   maf_files:    List of MAF files to be processed. Each file name is expected to be separated by comma
 #   datasets:     Desired names of each dataset. The names are expected to be in the same order as provided MAF files and should be separated by comma
 #   genes_list (optional):  Location and name of a file listing genes of interest to be considered in the report. The genes are expected to be listed in first column
+#   genes_list (optional):  Location and name of a file listing genes of interest to be considered in the report. The genes are expected to be listed in first column
+#   genes_blacklist (optional):  Location and name of a file listing genes to be excluded. Header is not expected and the genes should be listed in separate lines
 #   q_value:      q-value threshold for reporting significant genes (defualt 0.1)
 #   ratios_ci:    Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
 #   hypermut_sample_cutoff:   Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 1000)
@@ -54,6 +56,10 @@ option_list <- list(
               help="Desired names of each dataset"),
   make_option(c("-l", "--genes_list"), action="store", default=NA, type='character',
               help="Location and name of a file listing genes of interest to be considered in the report"),
+  make_option(c("-b", "--genes_blacklist"), action="store", default=NA, type='character',
+              help="Location and name of a file listing genes to be excluded"),
+  make_option(c("-i", "--samples_blacklist"), action="store", default=NA, type='character',
+              help="Location and name of a file listing samples to be excluded"),
   make_option(c("-q", "--q_value"), action="store", default=NA, type='character',
               help="q-value threshold for reporting significant genes"),
   make_option(c("-r", "--ratios_ci"), action="store", default=NA, type='character',
@@ -129,4 +135,4 @@ if ( is.na(opt$ucsc_genome_assembly) ) {
 }
 
 ##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, genes_list = opt$genes_list, q_value = as.numeric(opt$q_value), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder))
+rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, q_value = as.numeric(opt$q_value), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder))
