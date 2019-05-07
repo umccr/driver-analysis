@@ -15,17 +15,19 @@ params:
   maf_files: 
   datasets: 
   genes_list: 
+  genes_blacklist: 
+  samples_blacklist: 
   q_value: 
   ratios_ci: 
   hypermut_sample_cutoff: 
   max_muts_per_gene: 
   ucsc_genome_assembly: 
-  out_folder: 
+  out_folder: 'Driver_analysis_report'
 ---
 
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
 
-* **[dndscv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
+* **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig){target="_blank"}** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567){target="_blank"} for details, ...work in progress)
@@ -385,6 +387,52 @@ signif_genes.methods <- vector("list", length(methods))
 names(signif_genes.methods) <- methods
 ```
 
+```{r exclude_samples, comment = NA, message=FALSE, warning=FALSE}
+##### Exclude user-derined samples(s) from the analysis
+if ( !is.na(params$samples_blacklist) ) {
+    
+  for ( i in 1:length(mafFiles) ) {
+      
+    ##### Read in list of samples to be excluded
+    exclsamples.df <- read.table(params$samples_blacklist, sep="\t", as.is=TRUE, header=TRUE, row.names=NULL)
+    exclsamples <- unique(exclsamples.df[,"Tumor_Sample_Barcode"])
+    
+    samples2keep <- unlist(unique( mafInfo[[i]]@maf.silent[, "Tumor_Sample_Barcode"]))[ unlist(unique(mafInfo[[i]]@maf.silent[, "Tumor_Sample_Barcode"])) %!in% exclsamples ]
+    
+    ##### Subset the maf object to exclude use-defined sample(s)
+    ##### Initially don't save the subset output as maf object, as this will exlude samples with no non-synonymous mutations from the summary
+    mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = as.vector(samples2keep), genes = NULL, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE, dropLevels=TRUE)
+    
+    ##### Now read the data subset as a maf object
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], verbose = FALSE)
+  }
+}
+```
+
+```{r exclude_genes, comment = NA, message=FALSE, warning=FALSE}
+##### Exclude user-derined gene(s) from the analysis
+if ( !is.na(params$genes_blacklist) ) {
+    
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Read in list of genes to be excluded
+    exclgenes <- unique(read.table(params$genes_blacklist, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL)[,1])
+    
+    genes2keep <- unique( mafInfo[[i]]@data$Hugo_Symbol)[ unique( mafInfo[[i]]@data$Hugo_Symbol) %!in% exclgenes ]
+  
+    ##### Subset the maf object to exclude use-defined gene(s)
+    ##### Initially don't save the subset output as maf object, as this will exlude samples with no non-synonymous mutations from the summary
+    mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = NULL, genes = genes2keep, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE)
+    
+    ##### Now read the data subset as a maf object
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], verbose = FALSE)
+  }
+} else {
+  
+  genes2keep <- mafInfo[[i]]@gene.summary$Hugo_Symbol
+}
+```
+
 ```{r silent_variants, comment = NA, message=FALSE, warning=FALSE}
 ##### Identify and record samples with no non-synonymous mutations
 ##### Prepare list to store all samples and samples with > 0 non-synonymous variants
@@ -426,6 +474,10 @@ for ( i in 1:length(mafFiles) ) {
 
 ```{r dndscv_driver_analysis, comment = NA, message=FALSE, warning=FALSE }
 ##### Run dN/dS approach for cancer driver discovery using dNdScv option, which combines local information (synonymous mutations in the gene) and global information (variation of the mutation rate across genes, exploiting epigenomic covariates) to estimate the background mutation rate
+
+##### Get reference database
+eval(parse( text=paste0("data(refcds_hg", params$ucsc_genome_assembly, ", package=\"dndscv\")")))
+
 dndsout <- vector("list", length(mafFiles))
 names(dndsout) <- datasets.list
 
@@ -437,6 +489,9 @@ for ( i in 1:length(mafFiles) ) {
   ##### Run analysis for selected genes
   if ( !is.null(params$genes_list) ){
     
+    ##### First, check if all genes are in the RefCDS transcripts object
+    RefCDSgenes <- goi[ goi %in% sapply(RefCDS, function(x) x$gene_name) ]
+    
     dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = goi, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3, numcode = 1, outmats = TRUE)
     
     ##### Calculate confidence intervals for the dN/dS ratios per gene
@@ -447,7 +502,10 @@ for ( i in 1:length(mafFiles) ) {
   ##### Run analysis for all genes
   } else {
     
-    dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = NULL, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3, numcode = 1, outmats = TRUE)
+    ##### First, check if all genes are in the RefCDS transcripts object
+    RefCDSgenes <- genes2keep[ genes2keep %in% sapply(RefCDS, function(x) x$gene_name) ]
+    
+    dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = RefCDSgenes, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3, numcode = 1, outmats = TRUE)
 
     ##### Calculate confidence intervals for the dN/dS ratios per gene
     if ( params$ratios_ci ) {
@@ -521,11 +579,12 @@ for ( i in 1:length(mafFiles) ) {
   if (!is.null(dndsout[[i]]$exclmuts)) {
     
     exclmuts[[i]] <- dndsout[[i]]$exclmuts
+    exclmuts[[i]] <- exclmuts[[i]][, c("gene", "sampleID", "chr", "pos", "ref", "mut", "start", "end", "geneind")]
   
     } else {
     
     exclmuts[[i]] <- data.frame(matrix(ncol = 9, nrow = 0))
-    names(exclmuts[[i]]) <- c("sampleID", "chr", "pos", "ref", "mut", "start", "end", "geneind", "gene")
+    names(exclmuts[[i]]) <- c("gene", "sampleID", "chr", "pos", "ref", "mut", "start", "end", "geneind")
   }
   
   ##### Extract global maximum-likelihood estimates (MLEs) for the dN/dS ratios across all genes
@@ -735,6 +794,24 @@ cat("\n\n\n")
 
 ***
 
+#### Excluded samples
+
+List of samples excluded from the analysis.
+
+```{r excluded_samples_table, comment = NA, message=FALSE, warning=FALSE}
+##### Present a samples table in the html report
+if ( !is.na(params$samples_blacklist) ) {
+    
+  DT::datatable(data = exclsamples.df, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+      DT::formatStyle( columns = names(exclsamples.df), 'text-align' = 'center' )
+  
+} else {
+  cat("No samples were excluded.\n\n\n")
+}
+```
+
+***
+
 #### Hypermutator samples
 
 Table(s) listing sample(s) with > `r params$hypermut_sample_cutoff` coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.
@@ -759,7 +836,9 @@ cat("\n\n\n")
 
 ***
 
-### Genes summary
+### Genes summary {.tabset}
+
+#### Mutated genes
 
 Table(s) summarising mutated genes in individual datasets. Each table contains per-gene information (rows) about *number of different types of mutations* (columns), as well as the *total number of mutations* reported in corresponding MAF file. The last two columns contain the *number of samples with mutations/alterations* in the corresponding gene.
 
@@ -775,6 +854,24 @@ for ( i in 1:length(mafFiles) ) {
 
 ##### Print a list of htmlwidgets
 widges.list
+```
+
+***
+
+#### Excluded genes
+
+List of genes excluded from the analysis.
+
+```{r excluded_genes_table, comment = NA, message=FALSE, warning=FALSE}
+##### Present a gene table in the html report
+if ( !is.na(params$genes_blacklist) ) {
+    
+  DT::datatable(data = data.frame(Gene = exclgenes), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    DT::formatStyle( columns = "Gene", 'text-align' = 'center' )
+  
+} else {
+  cat("No genes were excluded.\n\n\n")
+}
 ```
 
 ***
@@ -1061,7 +1158,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
     
-  widges.list[[i]] <- DT::datatable( data = exclmuts[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclmuts[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = exclmuts[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclmuts[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
         DT::formatStyle( columns = names(exclmuts[[i]]), 'text-align' = 'center' )
 }
 
