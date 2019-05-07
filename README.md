@@ -33,6 +33,8 @@ The results from individual tools are **summarised** and **visualised** using *[
 
 The ***[dnds](https://github.com/im3sanger/dndscv)*** (including *dndscv* and *dNdSloc* models, see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details) method is implemented in *[driverAnalysis.R](./scripts/driverAnalysis.R)* script described in [Driver analysis summary](#driver-analysis-summary) section.
 
+<br>
+
 ### OncodriveClust
 
 The **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480) for details) method is implemented in *[driverAnalysis.R](./scripts/driverAnalysis.R)* script described in [Driver analysis summary](#driver-analysis-summary) section.
@@ -89,6 +91,8 @@ Argument | Description
 --maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma
 --datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files
 --genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL)
+--genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines
+--samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named "Tumor_Sample_Barcode". Additional columns are allowed
 --q_value | Q-value threshold for reporting significant genes (defualt 0.1)
 --ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 250)
