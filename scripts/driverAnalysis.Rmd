@@ -1359,7 +1359,7 @@ cat("\n\n\n")
 
 #### Plot
 
-Q-Q plot with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
  
 ```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
 for ( i in 1:length(mafFiles) ) {
@@ -1372,8 +1372,9 @@ for ( i in 1:length(mafFiles) ) {
     cat("![](",paste(paste0(oncodriveFML.res[i], ".png")),")")
     cat("<br/><br/><br/>")
 
-    ##### Copy the OncodriveFML results plot (HTML) to the report folder
+    ##### Copy the OncodriveFML results plot (HTML and PNG) to the report folder
     file.copy(paste0(oncodriveFML.res[i], ".png"), paste0(outDir, "/driver_analysis_OncodriveFML_plot_", datasets.list[i], ".png"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    file.copy(paste0(oncodriveFML.res[i], ".html"), paste0(outDir, "/driver_analysis_OncodriveFML_plot_", datasets.list[i], ".html"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
     
   } else {
     cat(paste("OncodriveFML results plot \"", paste0(oncodriveFML.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
