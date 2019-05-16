@@ -14,14 +14,18 @@ params:
   maf_dir: 
   maf_files: 
   datasets: 
-  genes_list: 
-  genes_blacklist: 
-  samples_blacklist: 
   q_value: 
   ratios_ci: 
   hypermut_sample_cutoff: 
   max_muts_per_gene: 
   ucsc_genome_assembly: 
+  genes_list: 
+  genes_blacklist: 
+  samples_blacklist: 
+  oncodrivefml: 
+  oncodrivefml_p: 
+  oncodrivefml_q: 
+  oncodrivefml_conf: 
   out_folder: 'Driver_analysis_report'
 ---
 
@@ -286,6 +290,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
         
         ##### Read in the oncoplots PNG files
         cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
+        cat("<br/><br/><br/>")
         
         ##### Remove redundant pdf plot
         file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
@@ -305,6 +310,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
         
         ##### Read in the oncoplots PNG files
         cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
+        cat("<br/><br/><br/>")
         
         ##### Remove redundant pdf plot
         file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
@@ -365,7 +371,7 @@ for ( i in 1:length(mafFiles) ) {
 }
 
 ##### Read in list of genes of interest of specified
-if ( !is.null(params$genes_list) ){
+if ( !is.na(params$genes_list) ){
   
   goi <- unique(read.table(params$genes_list, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL)[,1])
 }
@@ -377,12 +383,58 @@ if ( !file.exists(params$out_folder) ){
   dir.create(outDir, recursive=TRUE)
 }
 
+##### Read in OncodriveFML analysis results (https://oncodrivefml.readthedocs.io/en/latest/output.html)
+runOncodrivefmlChunk <- FALSE
+
+if ( !is.na(params$oncodrivefml) ){
+  
+  oncodriveFML.res <- unlist(strsplit(params$oncodrivefml, split=',', fixed=TRUE))
+  
+  oncodriveFML.res.table <- vector("list", length(mafFiles))
+  names(oncodriveFML.res.table) <- datasets.list
+  
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(oncodriveFML.res[i], ".tsv")) ) {
+      
+      oncodriveFML.res.table[[i]] <- read.table(paste0(oncodriveFML.res[i], ".tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
+      
+    } else {
+      ##### Create empty data frame
+      oncodriveFML.res.table[[i]] <- data.frame(matrix(NA, nrow = 0, ncol = 12))
+      names(oncodriveFML.res.table[[i]]) <- c("GENE_ID", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS", "SYMBOL")
+    }
+  }
+  runOncodrivefmlChunk <- TRUE
+  
+}
+
+##### Read in OncodriveFML configuration file (https://oncodrivefml.readthedocs.io/en/latest/output.html)
+oncodrivefml.conf <- NULL
+
+if ( !is.na(params$oncodrivefml_conf) ){
+  
+  ##### Read in the results table
+  if ( file.exists(paste0(oncodriveFML.res[i], ".tsv")) ) {
+      
+    oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="")
+      
+  }
+}
+
 ##### Initiate a list to record sinigficant driver genes for each dataset
 signif_genes.datasets <- vector("list", length(mafFiles))
 names(signif_genes.datasets) <- datasets.list
 
 ##### Initiate a list to record sinigficant driver genes for each method
-methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST")
+if ( runOncodrivefmlChunk ) {
+  
+  methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST", "OncodriveFML")
+} else {
+  methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST")
+}
+
 signif_genes.methods <- vector("list", length(methods))
 names(signif_genes.methods) <- methods
 ```
@@ -487,7 +539,7 @@ names(ci) <- datasets.list
 for ( i in 1:length(mafFiles) ) {
   
   ##### Run analysis for selected genes
-  if ( !is.null(params$genes_list) ){
+  if ( !is.na(params$genes_list) ){
     
     ##### First, check if all genes are in the RefCDS transcripts object
     RefCDSgenes <- goi[ goi %in% sapply(RefCDS, function(x) x$gene_name) ]
@@ -630,8 +682,8 @@ for ( i in 1:length(mafFiles) ) {
 gl <- data.table::fread(input = paste("zcat <", system.file("extdata", "prot_len.txt.gz", package = "maftools")), sep = "\t", stringsAsFactors = FALSE)
 
 ##### Create a list to store MAF info for individual datasets
-oncodrive.res <- vector("list", length(mafFiles))
-names(oncodrive.res) <- datasets.list
+oncodriveClust.res <- vector("list", length(mafFiles))
+names(oncodriveClust.res) <- datasets.list
 
 signif_genes.methods$OncodriveCLUST <- vector("list", length(datasets.list))
 names(signif_genes.methods$OncodriveCLUST) <- datasets.list
@@ -642,22 +694,47 @@ for ( i in 1:length(mafFiles) ) {
   ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable.
   if ( "HGVSp_Short" %in% maftools::getFields(mafInfo[[i]]) ) {
           
-    oncodrive.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "HGVSp_Short", gl) 
+    oncodriveClust.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "HGVSp_Short", gl) 
 
   } else if ( "aa_mutation" %in% maftools::getFields(mafInfo[[i]]) ) {
     
-    oncodrive.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "aa_mutation", gl)
+    oncodriveClust.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "aa_mutation", gl)
     
   } else {
     cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n\n\n", sep=" "))
   }
   
   ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
-  oncodrive.res[[datasets.list[i]]][[1]] <- oncodrive.res[[datasets.list[i]]][[1]][ order(oncodrive.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodrive.res[[datasets.list[i]]][[1]][, "total"]))) , ]
+  oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
   
   ##### Record sinigficant driver genes for each dataset and method
-  signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodrive.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
-  signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodrive.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
+  signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
+  signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
+}
+```
+
+```{r oncodriveFML_load_results,  include=FALSE, eval=runOncodrivefmlChunk}
+##### Create a list to store OncodriveFML info for individual datasets
+signif_genes.methods$oncodriveFML <- vector("list", length(datasets.list))
+names(signif_genes.methods$oncodriveFML) <- datasets.list
+
+###### Record results for each dataset
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Move gene name to the first column
+  col_idx <- grep("SYMBOL", names(oncodriveFML.res.table[[i]]))
+  oncodriveFML.res.table[[i]] <- subset(oncodriveFML.res.table[[i]], select=c(names(oncodriveFML.res.table[[i]])[c(col_idx, c(1:ncol(oncodriveFML.res.table[[i]]))[-col_idx])]))
+
+  ##### Sort the table based on p-values
+  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order(oncodriveFML.res.table[[i]]$P_VALUE), ]
+  
+  ##### Record sinigficant driver genes for each dataset and method
+  signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
+  signif_genes.methods$OncodriveFML[[i]] <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
+  
+  ##### Remove NAs
+  signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
+  signif_genes.methods$OncodriveFML[[i]] <- signif_genes.methods$OncodriveFML[[i]][ !is.na(signif_genes.methods$OncodriveFML[[i]])]
 }
 ```
 
@@ -912,7 +989,7 @@ The estimated **theta** (θ, the overdispersion parameter) value(s) for dataset(
 
 ##### dNdScv
 
-X-axis indicates the number of variants observed in individual genes and y-axis illustrates global q-values in -log10 scale. The size of the points is proportional to -log10 p-values based on all non-synonymous substitutions detected in individual genes. The colour scale reflects p-values computed for indels, with purple and yellow indicating low and high p-values, respectively.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global q-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.
 
 ```{r dndscv_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -951,7 +1028,7 @@ for ( i in 1:length(mafFiles) ) {
     ##### Add plot to the list for htmlwidgets
     widges.list[[i]] <- as_widget(ggplotly(p))
     
-    ##### Save the heatmap as html (PLOTLY)
+    ##### Save the plot as html (PLOTLY)
     htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
   } else {
@@ -970,7 +1047,7 @@ widges.list
 
 ##### dNdSloc
 
-X-axis indicates the number of variants observed in individual genes and y-axis illustrates q-values (in -log10 scale) based on all non-synonymous substitutions. The size of the points is proportional to -log10 q-values based exclusively on missense substitutions detected in individual genes.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *q-values* (in -log10 scale) based on all non-synonymous substitutions. The *size* of the points is proportional to -log10 *q-values* based exclusively on missense substitutions detected in individual genes.
 
 ```{r dndsloc_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1007,7 +1084,7 @@ for ( i in 1:length(mafFiles) ) {
     ##### Add plot to the list for htmlwidgets
     widges.list[[i]] <- as_widget(ggplotly(p))
     
-    ##### Save the heatmap as html (PLOTLY)
+    ##### Save the plot as html (PLOTLY)
     htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
   
   } else {
@@ -1028,7 +1105,7 @@ widges.list
 
 ##### dNdScv
 
-P-values for substitutions are obtained by *likelihood-ratio tests* as described in [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} and q-values are obtained by *Benjamini-Hodgberg’s multiple testing correction*. The table(s) also include information on the number of substitutions of each class observed in each gene, as well as *maximum-likelihood estimates* (*MLEs*) of the *dN/dS ratios* for each gene, for **missense** (*wmis*), **nonsense** (*wnon*), essential **splice site** mutations (*wspl*) and **indels** (*wind*). The *global q-values* integrating all mutation types are available in the ***qglobal_cv*** and *qallsubs_cv* columns for analyses with and without indels, respectively.
+*P-values* for substitutions are obtained by *likelihood-ratio tests* as described in [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} and *q-values* are obtained by *Benjamini-Hodgberg’s multiple testing correction*. The table(s) also include information on the number of substitutions of each class observed in each gene, as well as *maximum-likelihood estimates* (*MLEs*) of the *dN/dS ratios* for each gene, for **missense** (*wmis*), **nonsense** (*wnon*), essential **splice site** mutations (*wspl*) and **indels** (*wind*). The *global q-values* integrating all mutation types are available in the ***qglobal_cv*** and *qallsubs_cv* columns for analyses with and without indels, respectively.
 
 ```{r dndscv_results_summary, comment = NA, message=FALSE, warning=FALSE}
 ##### Present dndscv results summary table in the html report
@@ -1076,7 +1153,7 @@ widges.list
 
 ##### dNdSloc
 
-P-values are obtained from per-gene neutrality tests performed using *traditional dN/dS model*, in which the local mutation rate for a gene is estimated exclusively from the synonymous mutations observed in individual genes ([Wong *et al*., 2014](https://www.ncbi.nlm.nih.gov/pubmed/24316979){target="_blank"}). Q-values are obtained by *Benjamini-Hodgberg’s multiple testing correction*. The table(s) also include information on the number of substitutions of each class observed in each gene, as well as *maximum-likelihood estimates* (*MLEs*) of the *dN/dS ratios* for each gene, for **missense** (*wmis*), **nonsense** (*wnon*) and essential **splice site** mutations (*wspl*). The *q-values* integrating all mutation types are available in the ***qall_loc*** column.
+*P-values* are obtained from per-gene neutrality tests performed using *traditional dN/dS model*, in which the local mutation rate for a gene is estimated exclusively from the synonymous mutations observed in individual genes ([Wong *et al*., 2014](https://www.ncbi.nlm.nih.gov/pubmed/24316979){target="_blank"}). *Q-values* are obtained by *Benjamini-Hodgberg’s multiple testing correction*. The table(s) also include information on the number of substitutions of each class observed in each gene, as well as *maximum-likelihood estimates* (*MLEs*) of the *dN/dS ratios* for each gene, for **missense** (*wmis*), **nonsense** (*wnon*) and essential **splice site** mutations (*wspl*). The *q-values* integrating all mutation types are available in the ***qall_loc*** column.
 
 ```{r dndsloc_results_summary, comment = NA, message=FALSE, warning=FALSE}
 ##### Present dndscv results summary table in the html report
@@ -1177,7 +1254,7 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 #### Plot
 
-The size of the points on the scatter-plot(s) is proportional to the number of clusters found in individual genes. X-axis indicates the number of variants observed in these clusters and y-axis illustrates false discovery rate (FDR) values in -log10 scale. The colour scale reflects cluster scores, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
+The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) values in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
 ```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1187,17 +1264,17 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   
-  if ( !is.null(oncodrive.res[[datasets.list[i]]]) ) {
+  if ( !is.null(oncodriveClust.res[[datasets.list[i]]]) ) {
     
-    if ( nrow(oncodrive.res[[datasets.list[i]]][[1]]) > 0 ) {
+    if ( nrow(oncodriveClust.res[[datasets.list[i]]][[1]]) > 0 ) {
       
       ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-      oncodrive.res.table <- oncodrive.res[[datasets.list[i]]][[1]]
-      fdr <- oncodrive.res.table$fdr
+      oncodriveClust.res.table <- oncodriveClust.res[[datasets.list[i]]][[1]]
+      fdr <- oncodriveClust.res.table$fdr
       fdr[ fdr == 0 ] <- 1*10^-16
       
       ##### Prepare data frame for plotting with plotly
-      data.df <- data.frame(oncodrive.res.table$Hugo_Symbol, fdr, oncodrive.res.table$muts_in_clusters, oncodrive.res.table$clusterScores, oncodrive.res.table$clusters )
+      data.df <- data.frame(oncodriveClust.res.table$Hugo_Symbol, fdr, oncodriveClust.res.table$muts_in_clusters, oncodriveClust.res.table$clusterScores, oncodriveClust.res.table$clusters )
       colnames(data.df) <- c("gene", "fdr", "mutations_no", "clusterScores", "clusters")
       
       ##### Calculate x and y axis rangeby adding 10% of the original range
@@ -1212,7 +1289,7 @@ for ( i in 1:length(mafFiles) ) {
       ##### Add plot to the list for htmlwidgets
       widges.list[[i]] <- as_widget(ggplotly(p))
       
-      ##### Save the heatmap as html (PLOTLY)
+      ##### Save the plot as html (PLOTLY)
       htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
     } else {
@@ -1243,10 +1320,10 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   
-  if ( !is.null(oncodrive.res[[datasets.list[i]]]) ) {
+  if ( !is.null(oncodriveClust.res[[datasets.list[i]]]) ) {
       
-    widges.list[[i]] <- DT::datatable(data = oncodrive.res[[datasets.list[i]]][[1]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
-      DT::formatStyle( columns = names(oncodrive.res[[datasets.list[i]]][[1]]), 'text-align' = 'center' ) %>%
+    widges.list[[i]] <- DT::datatable(data = oncodriveClust.res[[datasets.list[i]]][[1]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+      DT::formatStyle( columns = names(oncodriveClust.res[[datasets.list[i]]][[1]]), 'text-align' = 'center' ) %>%
   formatRound(columns = c("clusterScores", "zscore", "fract_muts_in_clusters"), 1) %>%
   formatRound(columns = c("pval", "fdr"), 6)
   
@@ -1268,7 +1345,87 @@ cat("\n\n\n")
 
 [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} is a method designed to analyse the pattern of somatic mutations across tumours in both **coding and non-coding genomic regions** to identify signals of positive selection, and therefore, their involvement in tumorigenesis. The identification of protein coding genes, promoters, untranslated regions, intronic splice regions, and lncRNAs-containing driver mutations in several malignancies using [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} is described by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"}.
 
-... work in progress
+[OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} results are **`r if ( runOncodrivefmlChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
+
+`r if ( runOncodrivefmlChunk ) { c(paste0("The p- and q-values used for calling driver genes were set to ", params$oncodrivefml_p, " and ", params$oncodrivefml_q, ", respectively.")) } else { c(" ") }`
+
+<details>
+<summary>OncodriveFML settings</summary>
+<font size="2">
+
+`r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0(unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
+</font> 
+</details>
+
+#### Plot
+
+Q-Q plot with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
+ 
+```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the OncodriveFML results plot (HTML) exists
+  if ( file.exists(paste0(oncodriveFML.res[i], ".png")) ) {
+    
+    ##### Read in the oncodriveFML PNG files
+    cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
+    cat("![](",paste(paste0(oncodriveFML.res[i], ".png")),")")
+    cat("<br/><br/><br/>")
+
+    ##### Copy the OncodriveFML results plot (HTML) to the report folder
+    file.copy(paste0(oncodriveFML.res[i], ".png"), paste0(outDir, "/driver_analysis_OncodriveFML_plot_", datasets.list[i], ".png"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    
+  } else {
+    cat(paste("OncodriveFML results plot \"", paste0(oncodriveFML.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+  }
+}
+```
+
+***
+
+#### Significant cancer genes
+
+Table(s) presenting per-dataset [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} results, including *p-values*, *q-values*, as well as the *number of mutations* that are *SNPs*, multi nucleotide polymorphisms (*MNPs*) and insertions or deletions (*INDELS*).
+
+```{r oncodriveFML_table, comment=NA, warning=FALSE, eval=runOncodrivefmlChunk}
+##### Generate tables with oncodriveFML results
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the OncodriveFML results plot (HTML) exists
+  if ( file.exists(paste0(oncodriveFML.res[i], ".html")) ) {
+      
+    widges.list[[i]] <- DT::datatable(data = oncodriveFML.res.table[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+      DT::formatStyle( columns = names(oncodriveFML.res.table[[i]]), 'text-align' = 'center' ) %>%
+  formatRound(columns = c("P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
+  
+  } else {
+    cat(paste("OncodriveFML results table \"", paste0(oncodriveFML.res[i], ".tsv"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+<details>
+<summary>Table legend</summary>
+<font size="2">
+
+* **MUTS** - number of mutations found in the dataset for that gene
+* **MUTS_RECURRENCE** - number of mutations that do not occur in the same position
+* **SAMPLES** - number of mutated samples in the gene
+* **P_VALUE** - times that the observed value is higher than or equal to the expected value, divided by the number of randomizations
+* **Q_VALUE** - *P_VALUE* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
+* **P_VALUE_NEG** - times that the observed value is lower than or equal to the expected value, divided by the number of randomizations
+* **Q_VALUE_NEG** - *P_VALUE_NEG* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
+</font> 
+</details>
 
 ***
 
@@ -1286,7 +1443,7 @@ cat("\n\n\n")
 
 ### Hierarchical HotNet {.tabset}
 
-[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"}** (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details) is an improved version of [HotNet2](https://github.com/raphael-group/hotnet2).
+[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"} (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details) is an improved version of [HotNet2](https://github.com/raphael-group/hotnet2).
 
 ... work in progress
 
@@ -1677,6 +1834,130 @@ if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST)
 
 ***
 
+### OncodriveFML {.tabset}
+
+**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[1] }`
+
+```{r lollipop_plot_OncodriveFML_1, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[1], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[2] }`
+
+```{r lollipop_plot_OncodriveFML_2, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[2], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[3] }`
+
+```{r lollipop_plot_OncodriveFML_3, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[3], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[4] }`
+
+```{r lollipop_plot_OncodriveFML_4, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[4], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[5] }`
+
+```{r lollipop_plot_OncodriveFML_5, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[5], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[6] }`
+
+```{r lollipop_plot_OncodriveFML_6, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[6], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[7] }`
+
+```{r lollipop_plot_OncodriveFML_7, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[7], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[8] }`
+
+```{r lollipop_plot_OncodriveFML_8, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[8], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[9] }`
+
+```{r lollipop_plot_OncodriveFML_9, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[9], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
+#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[10] }`
+
+```{r lollipop_plot_OncodriveFML_10, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
+if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]]) != 0 ) {
+  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]), silent = TRUE)
+} else {
+   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[10], "is not available\n\n\n\n", sep=" "))
+}
+```
+
+***
+
 ## Mutations annotation {.tabset}
 
 Table(s) with detailed annotation of coding mutations (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples.
@@ -1747,6 +2028,36 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   
   annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUST[[i]], ]
+  
+  ##### Move gene name to the first column
+  col_idx <- grep("gene", names(annotmuts))
+  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
+  
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### OncodriveFML {.tabset}
+
+**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+
+```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
+##### Present results summary table in the html report
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveFML[[i]], ]
   
   ##### Move gene name to the first column
   col_idx <- grep("gene", names(annotmuts))
