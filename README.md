@@ -43,9 +43,106 @@ The **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/
 
 ### OncodriveFML
 
-...work in progress
+[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details) is a method designed to analyse the pattern of somatic mutations across tumours in both **coding and non-coding genomic regions** to identify signals of positive selection, and therefore, their involvement in tumorigenesis. The identification of protein coding genes, promoters, untranslated regions, intronic splice regions, and lncRNAs-containing driver mutations in several malignancies using [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) is described by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963).
 
-[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home), see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details
+#### Installation
+
+To install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) on Spartan follow the steps below (from [here](https://bitbucket.org/bbglab/oncodrivefml/src/master/))
+
+```
+module load python-dateutil
+
+pip install oncodrivefml
+```
+
+<br /> 
+
+#### Data download
+
+##### Example data
+
+```
+cd $HOME/applications
+
+mkdir oncodrivefml
+
+cd oncodrivefml
+
+wget https://bitbucket.org/bbglab/oncodrivefml/downloads/oncodrivefml-examples_v2.2.tar.gz --no-check-certificate
+
+tar -xvzf oncodrivefml-examples_v2.2.tar.gz
+```
+
+##### Reference data
+
+Download reference data using `BgData` tool
+
+* precomputed CADD scores (~17Gb)
+
+```
+bg-data get genomicscores/caddpack/1.0
+```
+
+* genome reference (3Gb)
+
+```
+bg-data get datasets/genomereference/hg19
+```
+
+* gene stops (16Mb) (not required)
+```
+bg-data get datasets/genestops/hg19
+```
+
+<br /> 
+
+#### Before running the analysis
+
+##### Parameters
+
+The key [parameters](https://oncodrivefml.readthedocs.io/en/latest/workflow.html#the-command-line-interface) to run [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) are described below
+
+Argument | Description
+------------ | ------------
+--input | Mutations file with 5 required columns *[CHROMOSOME, POSITION, REF, ALT and SAMPLE]*(https://oncodrivefml.readthedocs.io/en/latest/files.html#input-file-format). Of note, the program seems to recognise the MAF-specific column names as well, i.e. Chromosome, Start_Position, Reference_Allele, Tumor_Seq_Allele1 and Tumor_Sample_Barcode. Additional first row "#version 2.4" is fine as well
+--elements | File listing genomic elements to analyse. It requires 4 columns *[CHROMOSOME, START, END, ELEMENT](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format)
+--sequencing | Type of sequencing. Available options: "wgs", "wes" and "targeted". "targeted" option should be used if the platform is unknown
+--output | Name of the output folder
+--samples-blacklist | List of samples to be removed when loading the input file
+-no-indels | Discard indels in the analysis. Do not use this parameter if indels should be included
+<br /> 
+
+##### Configuration file
+
+The remaining setting can be set up in [configuration file](https://oncodrivefml.readthedocs.io/en/latest/configuration.html).
+
+By default, OncodriveFML is prepared to analyse mutations using **hg19** reference genome. For other genomes, update the configuration file accordingly (see [this](https://oncodrivefml.readthedocs.io/en/latest/configuration.html) guidline).
+
+The following settings are defined as default
+
+Section | Parameter | Value | Description
+------------ | ------------ | ------------ | ------------
+genome  | build | hg19 | Reference genome
+signature | method | complement | Use a 96 matrix with the signatures complemented
+score | file | ~/.bgdata/genomicscores/caddpack | Path to score file (downloaded using `bg-data get genomicscores/caddpack/1.0` command)
+statistic | method | amean | Mathematical method to use to compare observed and simulated values (arithmetic mean)
+statistic | discard_mnp | False | Do not use/use multiple bases substitutions (MNP) in the analysis (include them)
+indels | include | TRUE | Include indels in the analysis
+settings | cores | (commented out) | Use all the available cores
+
+<br />
+
+#### Running the analysis
+
+The analysis are executed using `oncodrivefml` command followed by paramters of interest, e.g.
+
+```
+cd /data
+
+oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements $HOME/applications/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  PACA-AU_oncodrivefml_analysis
+```
+
+Note, as default a file with of coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
 
 <br>
 
