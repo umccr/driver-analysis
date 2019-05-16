@@ -718,6 +718,9 @@ for ( i in 1:length(mafFiles) ) {
 signif_genes.methods$oncodriveFML <- vector("list", length(datasets.list))
 names(signif_genes.methods$oncodriveFML) <- datasets.list
 
+oncodriveFML.res.table.signif <- vector("list", length(datasets.list))
+names(oncodriveFML.res.table.signif) <- datasets.list
+
 ###### Record results for each dataset
 for ( i in 1:length(mafFiles) ) {
   
@@ -736,6 +739,9 @@ for ( i in 1:length(mafFiles) ) {
   ##### Remove NAs
   signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
   signif_genes.methods$OncodriveFML[[i]] <- signif_genes.methods$OncodriveFML[[i]][ !is.na(signif_genes.methods$OncodriveFML[[i]])]
+  
+  ##### Report the sinig
+  oncodriveFML.res.table.signif[[i]] <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
 }
 ```
 
@@ -1399,7 +1405,7 @@ for ( i in 1:length(mafFiles) ) {
   ##### Check if the OncodriveFML results plot (HTML) exists
   if ( file.exists(paste0(oncodriveFML.res[i], ".html")) ) {
     
-    widges.list[[i]] <- DT::datatable(data = oncodriveFML.res.table[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable(data = oncodriveFML.res.table.signif[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(oncodriveFML.res.table[[i]]), 'text-align' = 'center' ) %>%
   formatRound(columns = c("P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
   
