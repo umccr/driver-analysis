@@ -22,6 +22,7 @@ params:
   genes_list: 
   genes_blacklist: 
   samples_blacklist: 
+  nonSyn_list: 
   oncodrivefml: 
   oncodrivefml_p: 
   oncodrivefml_q: 
@@ -368,7 +369,7 @@ names(mafInfo) <- datasets.list
 
 ##### NOTE: maftools by default summarises only non-synonymous variants with high/moderate variant consequences and ignores silent variants (https://github.com/PoisonAlien/maftools/issues/63), which are stored in "maf.silent" slot of the class MAF object (mafInfo[[i]]@maf.silent)
 for ( i in 1:length(mafFiles) ) {
-  mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+  mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
 }
 
 ##### Read in list of genes of interest of specified
@@ -457,7 +458,7 @@ if ( !is.na(params$samples_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = as.vector(samples2keep), genes = NULL, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE, dropLevels=TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 }
 ```
@@ -478,7 +479,7 @@ if ( !is.na(params$genes_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = NULL, genes = genes2keep, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 } else {
   
@@ -993,6 +994,27 @@ By default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. T
 
 The estimated **theta** (θ, the overdispersion parameter) value(s) for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
 
+***
+
+**NOTE**: this analysis uses **only non-synonymous variants** defined as variants with the following consequences: *`r params$nonSyn_list`*.
+
+<details>
+<summary>Variants consequence impact definitions</summary>
+<font size="2">
+
+* [*High impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	the variant is assumed to have high (disruptive) impact in the protein, probably causing protein truncation, loss of function or triggering nonsense mediated decay.
+
+* [*Moderate impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a non-disruptive variant that might change protein effectiveness.
+
+* [*Low impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a variant that is assumed to be mostly harmless or unlikely to change protein behaviour.
+
+Variants with high/moderate variant consequences include: *frame shift deletions*, *frame shift deletions*, *splice site mutations*, *translation start site mutations*, *nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*.
+
+</font> 
+</details>
+
+***
+
 #### Plots {.tabset}
 
 ##### dNdScv
@@ -1259,6 +1281,27 @@ cat("\n\n\n")
 ### OncodriveClust {.tabset}
 
 Cancer driver genes detection based on positional clustering using [OncodriveClust](http://bg.upf.edu/group/projects/oncodrive-clust.php){target="_blank"} algorithm is based on the fact that most of the variants in cancer causing genes are enriched at few specific loci (hot-spots). According to this concept mutations in these regions potentially change the function of these proteins in a manner that provides an adaptive advantage to cancer cells and consequently are positively selected during clonal evolution of tumours. This property can thus be used to nominate novel candidate driver genes, as described in the paper [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"}.
+
+***
+
+**NOTE**: this analysis uses **only non-synonymous variants** defined as variants with the following consequences: *`r params$nonSyn_list`*.
+
+<details>
+<summary>Variants consequence impact definitions</summary>
+<font size="2">
+
+* [*High impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	the variant is assumed to have high (disruptive) impact in the protein, probably causing protein truncation, loss of function or triggering nonsense mediated decay.
+
+* [*Moderate impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a non-disruptive variant that might change protein effectiveness.
+
+* [*Low impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a variant that is assumed to be mostly harmless or unlikely to change protein behaviour.
+
+Variants with high/moderate variant consequences include: *frame shift deletions*, *frame shift deletions*, *splice site mutations*, *translation start site mutations*, *nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*.
+
+</font> 
+</details>
+
+***
 
 #### Plot
 
