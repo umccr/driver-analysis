@@ -26,6 +26,7 @@ params:
   oncodrivefml_p: 
   oncodrivefml_q: 
   oncodrivefml_conf: 
+  remove_duplicated_variants: 
   out_folder: 'Driver_analysis_report'
 ---
 
@@ -367,7 +368,7 @@ names(mafInfo) <- datasets.list
 
 ##### NOTE: maftools by default summarises only non-synonymous variants with high/moderate variant consequences and ignores silent variants (https://github.com/PoisonAlien/maftools/issues/63), which are stored in "maf.silent" slot of the class MAF object (mafInfo[[i]]@maf.silent)
 for ( i in 1:length(mafFiles) ) {
-  mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], verbose = FALSE)
+  mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
 }
 
 ##### Read in list of genes of interest of specified
@@ -456,7 +457,7 @@ if ( !is.na(params$samples_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = as.vector(samples2keep), genes = NULL, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE, dropLevels=TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 }
 ```
@@ -477,7 +478,7 @@ if ( !is.na(params$genes_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = NULL, genes = genes2keep, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 } else {
   
