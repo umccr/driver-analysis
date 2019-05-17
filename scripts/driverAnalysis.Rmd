@@ -731,9 +731,9 @@ for ( i in 1:length(mafFiles) ) {
   col_idx <- grep("SYMBOL", names(oncodriveFML.res.table[[i]]))
   oncodriveFML.res.table[[i]] <- subset(oncodriveFML.res.table[[i]], select=c(names(oncodriveFML.res.table[[i]])[c(col_idx, c(1:ncol(oncodriveFML.res.table[[i]]))[-col_idx])]))
 
-  ##### Order the table by P_VALUE, MUTS, MUTS_RECURRENCE and SAMPLES
+  ##### Order the table by P_VALUE, MUTS and SAMPLES
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order(oncodriveFML.res.table[[i]]$P_VALUE), ]
-  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$MUTS, oncodriveFML.res.table[[i]]$MUTS_RECURRENCE, oncodriveFML.res.table[[i]]$SAMPLES, decreasing = TRUE), ]
+  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$MUTS, oncodriveFML.res.table[[i]]$SAMPLES, decreasing = TRUE), ]
     
   ##### Record sinigficant driver genes for each dataset and method
   signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
