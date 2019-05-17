@@ -4,8 +4,9 @@ Workflow for **selection analysis** and **cancer driver discovery** using the fo
 
 * **[dndscv](https://github.com/im3sanger/dndscv)** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details)
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480) for details)
-* **[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home)** (see paper by [Mularoni *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details, ...*work in progress*)
+* **[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home)** (see paper by [Mularoni *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details)
 * **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig)** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details, ...*work in progress*)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api)** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details for details, ...*work in progress*)
 * **[CHASMplus](https://github.com/KarchinLab/CHASMplus)** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details, ...*work in progress*)
 * **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet)** (see preprint by [Reyna et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details, it is improved version of [HotNet2](https://github.com/raphael-group/hotnet2), ...*work in progress*)
 
@@ -20,6 +21,7 @@ The results from individual tools are **summarised** and **visualised** using *[
   * [OncodriveClust](#oncodriveclust)
   * [OncodriveFML](#oncodrivefml)
   * [MutSig](#mutsig)
+  * [Cancer Genome Interpreter](#cancer-genome-interpreter)
   * [CHASMplus](#chasmplus)
   * [Hierarchical HotNet](#hierarchical-hotnet)
 * [Driver analysis summary](#driver-analysis-summary)
@@ -47,7 +49,7 @@ The **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/
 
 #### Installation
 
-To install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) on Spartan follow the steps below (from [here](https://bitbucket.org/bbglab/oncodrivefml/src/master/))
+To install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) on Spartan follow the [steps](https://bitbucket.org/bbglab/oncodrivefml/src/master/) below
 
 ```
 module load python-dateutil
@@ -77,7 +79,7 @@ tar -xvzf oncodrivefml-examples_v2.2.tar.gz
 
 Download reference data using `BgData` tool
 
-* precomputed CADD scores (~17Gb)
+* precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores (~17Gb)
 
 ```
 bg-data get genomicscores/caddpack/1.0
@@ -104,45 +106,61 @@ The key [parameters](https://oncodrivefml.readthedocs.io/en/latest/workflow.html
 
 Argument | Description
 ------------ | ------------
---input | Mutations file with 5 required columns *[CHROMOSOME, POSITION, REF, ALT and SAMPLE]*(https://oncodrivefml.readthedocs.io/en/latest/files.html#input-file-format). Of note, the program seems to recognise the MAF-specific column names as well, i.e. Chromosome, Start_Position, Reference_Allele, Tumor_Seq_Allele1 and Tumor_Sample_Barcode. Additional first row "#version 2.4" is fine as well
---elements | File listing genomic elements to analyse. It requires 4 columns *[CHROMOSOME, START, END, ELEMENT](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format)
---sequencing | Type of sequencing. Available options: "wgs", "wes" and "targeted". "targeted" option should be used if the platform is unknown
+--input | Mutations file with 5 required columns *[CHROMOSOME, POSITION, REF, ALT and SAMPLE](https://oncodrivefml.readthedocs.io/en/latest/files.html#input-file-format)*. Of note, the program recognises the MAF-specific column names as well, i.e. `Chromosome`, `Start_Position`, `Reference_Allele`, `Tumor_Seq_Allele1` and `Tumor_Sample_Barcode`. Additional first row `"#version [version number]"` is fine as well
+--elements | File listing genomic elements to analyse. It requires 4 columns *[CHROMOSOME, START, END, ELEMENT](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format)*
+--sequencing | Type of sequencing. Available options: `wgs`, `wes` and `targeted`. `targeted` option should be used if the platform is unknown
 --output | Name of the output folder
 --samples-blacklist | List of samples to be removed when loading the input file
--no-indels | Discard indels in the analysis. Do not use this parameter if indels should be included
+--no-indels | Defines whether to discard indels in the analysis. Do not use this parameter if indels should be included
 <br /> 
 
 ##### Configuration file
 
-The remaining setting can be set up in [configuration file](https://oncodrivefml.readthedocs.io/en/latest/configuration.html).
+The remaining settings can be set up in [configuration file](https://oncodrivefml.readthedocs.io/en/latest/configuration.html).
 
 By default, OncodriveFML is prepared to analyse mutations using **hg19** reference genome. For other genomes, update the configuration file accordingly (see [this](https://oncodrivefml.readthedocs.io/en/latest/configuration.html) guidline).
 
-The following settings are defined as default
+The following settings are defined as default:
 
-Section | Parameter | Value | Description
+Section | Parameter | Default value | Description
 ------------ | ------------ | ------------ | ------------
-genome  | build | hg19 | Reference genome
-signature | method | complement | Use a 96 matrix with the signatures complemented
-score | file | ~/.bgdata/genomicscores/caddpack | Path to score file (downloaded using `bg-data get genomicscores/caddpack/1.0` command)
-statistic | method | amean | Mathematical method to use to compare observed and simulated values (arithmetic mean)
-statistic | discard_mnp | False | Do not use/use multiple bases substitutions (MNP) in the analysis (include them)
-indels | include | TRUE | Include indels in the analysis
-settings | cores | (commented out) | Use all the available cores
+[genome]  | build | hg19 | Reference genome
+[signature] | method | complement | Use a 96 matrix with the signatures complemented
+[score] | file | ~/.bgdata/genomicscores/caddpack | Path to score file (downloaded using `bg-data get genomicscores/caddpack/1.0` command)
+[statistic] | method | amean | Mathematical method to use to compare observed and simulated values (arithmetic mean)
+[statistic] | discard_mnp | False | Do not use/use multiple bases substitutions (MNP) in the analysis (include them)
+[[indels]] | include | TRUE | Include indels in the analysis
+[settings] | cores | (commented out) | Use all the available cores
 
 <br />
 
 #### Running the analysis
 
-The analysis are executed using `oncodrivefml` command followed by paramters of interest, e.g.
+The analysis are executed using `oncodrivefml` command followed by [paramters](#parameters) of interest, e.g.
 
 ```
-cd /data
+data=/data/cephfs/punim0010/projects/Jacek_Cohort-analyses/mutation/projects/Avner_organoid_bank
 
-oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements $HOME/applications/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  PACA-AU_oncodrivefml_analysis
+cd $data
+
+# Run OncodriveFML using MAF from Avner primary tissue samples
+oncodrivefml --input Avner-primary_tissue.maf --elements $HOME/applications/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  Avner-primary_tissue_oncodrivefml_analysis
+
+# Run OncodriveFML using MAF from Avner organoid samples
+oncodrivefml --input Avner-organoids.maf --elements $HOME/applications/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  Avner-organoids_oncodrivefml_analysis
 ```
 
-Note, as default a file with of coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
+**Note**, as default a file with coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
+
+<br />
+
+#### Output
+
+[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) generates 3 output files with the same name but different extension. The name given to the files is the same as the name of the mutations file (*Avner-primary_tissue.maf* and *Avner-organoids.maf* in the [example](#running-the-analysis) above) followed by `-oncodrivefml` and the extension:
+
+* `.tsv` - tabulated file with the analysis results
+* `.png` - an image with the most significant genes labeled
+* `.html` - HTML file with an interactive plot which can be used to search for specific genes
 
 <br>
 
@@ -151,6 +169,18 @@ Note, as default a file with of coding sequence [regions](https://oncodrivefml.r
 ...work in progress
 
 [MutSig](http://software.broadinstitute.org/cancer/cga/mutsig), see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details.
+
+<br>
+
+### Cancer Genome Interpreter
+
+...work in progress
+
+[Cancer Genome Interpreter](http://software.broadinstitute.org/cancer/cga/mutsig) (CGI), see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details.
+
+This tool is freely available through an API or a web interface at [http://www.cancergenomeinterpreter.org](http://www.cancergenomeinterpreter.org). 
+
+The CGI resource can also be accessed programmatically by an API created via REST. Only registered users can make use of the API, since a token is needed for any communication between the end user and the REST API. Further details can be found at [https://www.cancergenomeinterpreter.org/api/v1](https://www.cancergenomeinterpreter.org/rest_api).
 
 <br>
 
@@ -168,10 +198,6 @@ Note, as default a file with of coding sequence [regions](https://oncodrivefml.r
 
 [Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet), see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details.
 
-
-
-
-
 <br>
 
 ## Driver analysis summary
@@ -187,19 +213,20 @@ Argument | Description
 --maf_dir | Directory with *MAF* file(s)
 --maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma
 --datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files
---q_value | Q-value threshold for reporting significant genes (defualt 0.1)
---ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
---hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 250)
---max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt 3)
---ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt 19)
---out_folder | Output folder (defualt "Driver_analysis_report")
+--q_value | Q-value threshold for reporting significant genes (defualt is `0.1`)
+--ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`)
+--hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`)
+--max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`)
+--ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`)
+--out_folder | Output folder (defualt is `Driver_analysis_report`)
 --genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL)
 --genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines
---samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named "Tumor_Sample_Barcode". Additional columns are allowed
+--samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed
 --oncodrivefml | Name of folder with results files from [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) analysis (OPTIONAL)
---oncodrivefml_p | P-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL). Defualt values is 0.1
---oncodrivefml_q | Q-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL). Defualt values is 0.001
+--oncodrivefml_p | P-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.1`)
+--oncodrivefml_q | Q-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.001`)
 --oncodrivefml_conf | Directory and name of [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) configuration file (OPTIONAL)
+--remove_duplicated_variants | Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? (OPTIONAL; defulat is `TRUE`)
 <br />
 
 **Packages**: *[maftools](https://www.bioconductor.org/packages/devel/bioc/vignettes/maftools/inst/doc/maftools.html)*, *[optparse](https://cran.r-project.org/web/packages/optparse/optparse.pdf)*, *[knitr](https://cran.r-project.org/web/packages/knitr/knitr.pdf)*, *[DT](https://rstudio.github.io/DT/)*, *[ggplot2](https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf)*, *[dndscv](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/dNdScv.html)*, *[UpSetR](https://cran.r-project.org/web/packages/UpSetR/README.html)*, *[stringr](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html)*, *[magick](https://cran.r-project.org/web/packages/magick/vignettes/intro.html)*
@@ -207,8 +234,11 @@ Argument | Description
 **Command line use example**:
 
 ```
-Rscript driverAnalysis.R --maf_dir /data --maf_files simple_somatic_mutation.open.PACA-AU.maf,simple_somatic_mutation.open.PACA-CA.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --q_value 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 3000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report
-```
-<br>
+oncodrivefml_conf=/Users/jmarzec/applications/oncodrivefml/example/oncodrivefml_v2.conf
 
-This will generate *Driver_analysis_report.html* report with summary tables and plots within *Driver_analysis_report* folder.
+Rscript driverAnalysis.R --maf_dir $data --maf_files Avner-primary_tissue.maf,Avner-organoids.maf --datasets Primary_tissue,Organoid --q_value 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 200 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --oncodrivefml $data/Avner-primary_tissue_oncodrivefml_analysis/Avner-primary_tissue-oncodrivefml,$data/Avner-organoids_oncodrivefml_analysis/Avner-organoids-oncodrivefml --oncodrivefml_conf $oncodrivefml_conf --out_folder Avner_driver_analysis_report
+```
+
+<br />
+
+This will generate *Avner_driver_analysis_report* report with summary tables and plots within *Avner_driver_analysis_report* folder.
