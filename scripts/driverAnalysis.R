@@ -32,6 +32,7 @@
 #   oncodrivefml_p (optional):   P-value threshold for reporting OncodriveFML results. Defualt values is 0.1
 #   oncodrivefml_q (optional):   Q-value threshold for reporting OncodriveFML results. Defualt values is 0.001
 #   oncodrivefml_conf (optional):   Directory and name of OncodriveFML configuration file
+#	  remove_duplicated_variants (optional):		Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? Defulat value is "FALSE"
 #
 ################################################################################
 
@@ -83,7 +84,9 @@ option_list <- list(
   make_option(c("-j", "--oncodrivefml_q"), action="store", default=NA, type='character',
               help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
   make_option(c("-a", "--oncodrivefml_conf"), action="store", default=NA, type='character',
-              help="Directory and name of OncodriveFML configuration file")
+              help="Directory and name of OncodriveFML configuration file"),
+  make_option(c("-v", "--remove_duplicated_variants"), action="store", default=NA, type='character',
+              help="Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene?")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -150,5 +153,16 @@ if ( is.na(opt$oncodrivefml_q) ) {
   opt$oncodrivefml_q <- 0.1
 }
 
+##### Set defualt paramters
+if ( is.na(opt$remove_duplicated_variants) ) {
+  opt$remove_duplicated_variants = TRUE
+}
+
+##### Check input paramters
+if ( tolower(opt$remove_duplicated_variants) != "true" && tolower(opt$remove_duplicated_variants) != "false"  ) {
+  cat("\nMake sure that the \"--removeDuplicatedVariants\" parameter is set to \"TRUE\" or \"FALSE\"!\n\n")
+  q()
+}
+
 ##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, q_value = as.numeric(opt$q_value), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf))
+rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, q_value = as.numeric(opt$q_value), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, remove_duplicated_variants = opt$remove_duplicated_variants))
