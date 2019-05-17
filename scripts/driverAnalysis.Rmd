@@ -37,6 +37,7 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig){target="_blank"}** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567){target="_blank"} for details, ...work in progress)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details, ...work in progress)
 * **[CHASMplus](https://github.com/KarchinLab/CHASMplus){target="_blank"}** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4){target="_blank"} for details, ...work in progress)
 * **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"}** (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details, ...work in progress)
 
@@ -1485,11 +1486,23 @@ cat("\n\n\n")
 
 ... work in progress
 
+[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig){target="_blank"} (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567){target="_blank"} for details)
+
+***
+
+### Cancer Genome Interpreter {.tabset}
+
+... work in progress
+
+[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"} (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
+
 ***
 
 ### CHASMplus {.tabset}
 
 ... work in progress
+
+[CHASMplus](https://github.com/KarchinLab/CHASMplus){target="_blank"} (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4){target="_blank"} for details)
 
 ***
 
