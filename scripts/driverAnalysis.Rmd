@@ -342,6 +342,65 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
     }
   }
 }
+
+###### Generate dataTable for each dataset with all mutation information for selected gene(s), as provided in MAF files. User can filter variants to include only non-synonymous (defualt), silent or all variants
+mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous") {
+  
+  ##### Vector with datasets with no mutations reported in selected genes
+  datasets.noMut <- NULL
+  
+  ##### Create a list for htmlwidgets
+  widges.list <- htmltools::tagList()
+  
+  for ( i in 1:length(datasets) ) {
+    
+    ##### Include all variants
+    if ( type == "all" ) {
+      
+        mut.details.genes <- mafInfo[[datasets[i]]]@data[ mafInfo[[datasets[i]]]@data[, Hugo_Symbol] %in% genes, ]
+        mut.details.genes <- rbind(mut.details.genes, mafInfo[[datasets[i]]]@maf.silent[ mafInfo[[datasets[i]]]@maf.silent[, Hugo_Symbol] %in% genes, ] )
+        
+    ##### Include silent variants
+    } else if ( type == "silent" ) {
+      
+        mut.details.genes <- mafInfo[[datasets[i]]]@maf.silent[ mafInfo[[datasets[i]]]@maf.silent[, Hugo_Symbol] %in% genes, ]
+    
+    ##### Include only non-synonymous variants
+    } else {
+      
+        mut.details.genes <- mafInfo[[datasets[i]]]@data[ mafInfo[[datasets[i]]]@data[, Hugo_Symbol] %in% genes, ]
+    }
+    
+    
+    if ( nrow(mut.details.genes) != 0 ) {
+      
+      ##### Sort table by gene symbol and then by sample ID
+      mut.details.genes <- mut.details.genes[ order(mut.details.genes$Hugo_Symbol, mut.details.genes$Tumor_Sample_Barcode), ]
+      
+      #### Move column with Hugo_Symbol to the first place and Tumor_Sample_Barcode to the second
+      col_idx <- grep("Tumor_Sample_Barcode", names(mut.details.genes))
+      mut.details.genes <- as.data.frame(mut.details.genes)[, c(col_idx, (1:ncol(mut.details.genes))[-col_idx]) ]
+      
+      col_idx <- grep("Hugo_Symbol", names(mut.details.genes))
+      mut.details.genes <- as.data.frame(mut.details.genes)[, c(col_idx, (1:ncol(mut.details.genes))[-col_idx]) ]
+      
+      widges.list[[i]] <- DT::datatable( data = mut.details.genes, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+        DT::formatStyle( columns = names(mut.details.genes), 'text-align' = 'center' )
+      
+    } else {
+      datasets.noMut <- c(datasets.noMut, datasets[i])
+    }
+  }
+  
+  ##### Report datasets with no mutations reported in selected genes
+  if ( length(datasets.noMut) != 0 ) {
+    
+    cat(paste("Note, queried gene(s)", genes, "have no non-synonymous variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n\n\n", sep=" "))
+  }
+  
+  ##### Print a list of htmlwidgets
+  widges.list
+}
 ```
 
 ```{r load_libraries, warning=FALSE}
@@ -721,6 +780,7 @@ for ( i in 1:length(mafFiles) ) {
 signif_genes.methods$oncodriveFML <- vector("list", length(datasets.list))
 names(signif_genes.methods$oncodriveFML) <- datasets.list
 
+##### Create list to hold dataframes with sinigficant driver genes
 oncodriveFML.res.table.signif <- vector("list", length(datasets.list))
 names(oncodriveFML.res.table.signif) <- datasets.list
 
@@ -743,7 +803,7 @@ for ( i in 1:length(mafFiles) ) {
   signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
   signif_genes.methods$OncodriveFML[[i]] <- signif_genes.methods$OncodriveFML[[i]][ !is.na(signif_genes.methods$OncodriveFML[[i]])]
   
-  ##### Report the sinig
+  ##### Report the sinigficant driver genes
   oncodriveFML.res.table.signif[[i]] <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
 }
 ```
@@ -1411,7 +1471,7 @@ cat("\n\n\n")
 
 #### Plot
 
-[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*. **Note**, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Significant cancer genes* tab to see the full list).
  
 ```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
 for ( i in 1:length(mafFiles) ) {
@@ -1449,6 +1509,8 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Check if the OncodriveFML results plot (HTML) exists
   if ( file.exists(paste0(oncodriveFML.res[i], ".html")) ) {
+    
+    oncodriveFML.res.table.signif <- oncodriveFML.res.table.signif[[i]]
     
     widges.list[[i]] <- DT::datatable(data = oncodriveFML.res.table.signif[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(oncodriveFML.res.table[[i]]), 'text-align' = 'center' ) %>%
@@ -2025,7 +2087,7 @@ if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[
 
 ## Mutations annotation {.tabset}
 
-Table(s) with detailed annotation of coding mutations (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples.
+Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples. **Note**, mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table below.
 
 ### dNdScv
 
@@ -2111,7 +2173,7 @@ cat("\n\n\n")
 
 ***
 
-### OncodriveFML {.tabset}
+### OncodriveFML
 
 **`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
 
@@ -2135,6 +2197,84 @@ for ( i in 1:length(mafFiles) ) {
 ##### Print a list of htmlwidgets
 widges.list
 
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+## Mutation details {.tabset .tabset-fade}
+
+Tables with detailed information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+
+### dNdScv {.tabset .tabset-fade}
+
+#### Non-synonymous
+
+<details>
+<summary>Non-synonymous variants definition</summary>
+<font size="2">
+
+**Non-synonymous variants** are defined as variants with the following consequences: *`r params$nonSyn_list`*.
+
+</font> 
+</details>
+
+```{r details_mut_dNdScv_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "all")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+#### Silent
+
+<details>
+<summary>Sileny variants definition</summary>
+<font size="2">
+
+**Sileny variants** are defined as variants with the following consequences: *`r unique(mafInfo[[dataset]]@maf.silent$Variant_Classification)`*.
+
+</font> 
+</details>
+
+```{r details_mut_dNdScv_silent, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "all")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+
+### dNdSloc
+
+```{r details_mut_dNdSloc, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdSloc[[i]], type = "all")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### OncodriveCLUST
+
+```{r details_mut_OncodriveCLUST, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "all")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### OncodriveFML
+
+**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+
+```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "all")
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2190,7 +2330,7 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Generate the upset plot to illustrate the overlap between individual methods
     upset(as.data.frame(t(signif_genes.upset[[i]])), sets = colnames(t(signif_genes.upset[[i]])), sets.bar.color = "#56B4E9", order.by = "freq", empty.intersections = "on", sets.x.label = "Total genes no.", mb.ratio = c(0.5, 0.5))
-    
+    cat("<br/><br/><br/>")
     
   } else {
     cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
