@@ -14,12 +14,13 @@
 #
 #   Description: Script for selection analyses and cancer driver discovery results. This script catches the arguments from the command line and passes them to the driverAnalysis.Rmd script to produce the report, generate set of plots and tables.
 #
-#   Command line use example: Rscript driverAnalysis.R --maf_dir /data --maf_filessimple_somatic_mutation.open.PACA-AU.maf,PACA-CA.icgc.simple_somatic_mutation.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --q_value 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 1000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report
+#   Command line use example: Rscript driverAnalysis.R --maf_dir /data --maf_filessimple_somatic_mutation.open.PACA-AU.maf,PACA-CA.icgc.simple_somatic_mutation.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --dnds_q 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 1000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report
 #
 #   maf_dir:      Directory with MAF files
 #   maf_files:    List of MAF files to be processed. Each file name is expected to be separated by comma
 #   datasets:     Desired names of each dataset. The names are expected to be in the same order as provided MAF files and should be separated by comma
-#   q_value:      q-value threshold for reporting significant genes (defualt 0.1)
+#   dnds_q:       dNdS method q-value threshold for reporting significant genes (defualt 0.1)
+#   oncodriveclust_fdr:   OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt 0.5)
 #   ratios_ci:    Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
 #   hypermut_sample_cutoff:   Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 1000)
 #   max_muts_per_gene:   Maximum mutations per gene in same sample (remaining will be subsampled; defualt 3)
@@ -60,8 +61,10 @@ option_list <- list(
               help="List of MAF files to be processed"),
   make_option(c("-c", "--datasets"), action="store", default=NA, type='character',
               help="Desired names of each dataset"),
-  make_option(c("-q", "--q_value"), action="store", default=NA, type='character',
-              help="q-value threshold for reporting significant genes"),
+  make_option(c("-q", "--dnds_q"), action="store", default=NA, type='character',
+              help="dNdS method q-value threshold for reporting significant genes"),
+  make_option(c("-k", "--oncodriveclust_fdr"), action="store", default=NA, type='character',
+              help="OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes"),
   make_option(c("-r", "--ratios_ci"), action="store", default=NA, type='character',
               help="Calculate per-gene confidence intervals for the dN/dS ratios"),
   make_option(c("-u", "--hypermut_sample_cutoff"), action="store", default=NA, type='character',
@@ -102,7 +105,7 @@ opt$datasets <- gsub("\\s","", opt$datasets)
 if (is.na(opt$maf_dir) || is.na(opt$maf_files) || is.na(opt$datasets) ) {
 
   cat("\nPlease type in required arguments!\n\n")
-  cat("\ncommand example:\n\nRscript driverAnalysis.R --maf_dir /data --maf_filessimple_somatic_mutation.open.PACA-AU.maf,PACA-CA.icgc.simple_somatic_mutation.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --q_value 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 1000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report\n\n")
+  cat("\ncommand example:\n\nRscript driverAnalysis.R --maf_dir /data --maf_filessimple_somatic_mutation.open.PACA-AU.maf,PACA-CA.icgc.simple_somatic_mutation.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --dnds_q 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 1000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report\n\n")
   q()
   
 } else if ( length(unlist(strsplit(opt$maf_files, split=',', fixed=TRUE))) != length(unlist(strsplit(opt$datasets, split=',', fixed=TRUE))) ) {
@@ -116,9 +119,14 @@ if ( is.na(opt$out_folder) ) {
 	opt$out_folder<- "Driver_analysis_report"
 }
 
-##### Set default for q-value threshold
-if ( is.na(opt$q_value) ) {
-  opt$q_value <- 0.1
+##### Set default for dN/dS method q-value threshold
+if ( is.na(opt$dnds_q) ) {
+  opt$dnds_q <- 0.1
+}
+
+##### Set default for OncodriveClust method FDR threshold
+if ( is.na(opt$oncodriveclust_fdr) ) {
+  opt$oncodriveclust_fdr <- 0.5
 }
 
 ##### Set default for per-gene confidence intervalsd
@@ -175,4 +183,4 @@ if ( tolower(opt$remove_duplicated_variants) != "true" && tolower(opt$remove_dup
 }
 
 ##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, q_value = as.numeric(opt$q_value), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, remove_duplicated_variants = opt$remove_duplicated_variants))
+rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, dnds_q = as.numeric(opt$dnds_q), oncodriveclust_fdr = as.numeric(opt$oncodriveclust_fdr), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, remove_duplicated_variants = opt$remove_duplicated_variants))

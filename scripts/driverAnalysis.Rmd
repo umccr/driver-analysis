@@ -11,10 +11,11 @@ output:
   rmdformats::material:
     highlight: kate
 params:
-  maf_dir: 
-  maf_files: 
-  datasets: 
-  q_value: 
+  maf_dir:
+  maf_files:
+  datasets:
+  dnds_q: 
+  oncodriveclust_fdr: 
   ratios_ci: 
   hypermut_sample_cutoff: 
   max_muts_per_gene: 
@@ -667,7 +668,7 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Get a table of significant genes
   sel_cv[[i]] <- dndsout[[i]]$sel_cv
-  signif_genes_cv[[i]] <- sel_cv[[i]][sel_cv[[i]]$qglobal_cv < params$q_value, ]
+  signif_genes_cv[[i]] <- sel_cv[[i]][sel_cv[[i]]$qglobal_cv < params$dnds_q, ]
   rownames(signif_genes_cv[[i]]) = NULL
   
   ##### Organise the table of significant genes
@@ -713,7 +714,7 @@ for ( i in 1:length(mafFiles) ) {
   globaldnds[[i]] <- dndsout[[i]]$globaldnds
   
   ##### Extract results from the local neutrality test based on the dNdSloc model
-  signif_genes_loc[[i]] <- dndsout[[i]]$sel_loc[ dndsout[[i]]$sel_loc$qall_loc < params$q_value, ]
+  signif_genes_loc[[i]] <- dndsout[[i]]$sel_loc[ dndsout[[i]]$sel_loc$qall_loc < params$dnds_q, ]
   rownames(signif_genes_loc[[i]]) = NULL
   
   ##### Organise the table of significant genes
@@ -778,8 +779,8 @@ for ( i in 1:length(mafFiles) ) {
   oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
   
   ##### Record sinigficant driver genes for each dataset and method
-  signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
-  signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol)
+  signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
+  signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
 }
 ```
 
@@ -1060,6 +1061,18 @@ By default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. T
 </details>
 
 The estimated **theta** (θ, the overdispersion parameter) value(s) for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
+
+***
+
+<details>
+<summary>Report input parameters</summary>
+<font size="2">
+* Genome assembly version: **`r params$ucsc_genome_assembly`**
+* Maximum mutations per gene in same sample: **`r params$max_muts_per_gene`**
+* Mutations per gene to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
+* Q-value threshold for reporting significant genes: **`r params$dnds_q`**
+</font> 
+</details>
 
 ***
 
@@ -1351,6 +1364,15 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 ***
 
+<details>
+<summary>Report input parameters</summary>
+<font size="2">
+* False discovery rate (FDR) threshold for reporting significant genes: **`r params$oncodriveclust_fdr`**
+</font> 
+</details>
+
+***
+
 **NOTE**: this analysis uses **only non-synonymous variants** defined as variants with the following consequences: *`r params$nonSyn_list`*.
 
 <details>
@@ -1467,13 +1489,26 @@ cat("\n\n\n")
 
 `r if ( runOncodrivefmlChunk ) { c(paste0("The p- and q-values used for calling driver genes were set to ", params$oncodrivefml_p, " and ", params$oncodrivefml_q, ", respectively.")) } else { c(" ") }`
 
+***
+
 <details>
 <summary>OncodriveFML settings</summary>
 <font size="2">
-
 `r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0(unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
 </font> 
 </details>
+
+***
+
+<details>
+<summary>Report input parameters</summary>
+<font size="2">
+* P-value threshold for reporting significant genes: **`r params$oncodrivefml_p`**
+* Q-value threshold for reporting significant genes: **`r params$oncodrivefml_q`**
+</font> 
+</details>
+
+***
 
 #### Plot
 
@@ -2208,7 +2243,7 @@ cat("\n\n\n")
 
 ## Mutation details {.tabset .tabset-fade}
 
-Tables with detailed information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
 
 <details>
 <summary>Variants consequence impact definitions</summary>
@@ -2244,6 +2279,8 @@ cat("\n\n\n")
 
 ### dNdSloc {.tabset .tabset-fade}
 
+#### Non-synonymous
+
 ```{r details_mut_dNdSloc_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdSloc[[i]], type = "nonsynonymous")
@@ -2265,6 +2302,8 @@ cat("\n\n\n")
 ***
 
 ### OncodriveCLUST {.tabset .tabset-fade}
+
+#### Non-synonymous
 
 ```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
@@ -2289,6 +2328,8 @@ cat("\n\n\n")
 ### OncodriveFML {.tabset .tabset-fade}
 
 **`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+
+#### Non-synonymous
 
 ```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes

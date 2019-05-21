@@ -217,7 +217,8 @@ Argument | Description
 --maf_dir | Directory with *MAF* file(s)
 --maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma
 --datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files
---q_value | Q-value threshold for reporting significant genes (defualt is `0.1`)
+--dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `0.1`)
+--oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`)
 --ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`)
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`)
 --max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`)
