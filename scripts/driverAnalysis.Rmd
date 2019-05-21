@@ -571,6 +571,14 @@ for ( i in 1:length(mafFiles) ) {
     colnames(MAF_samples.silent.df) <- c("Dataset", "Sample")
   }
 }
+
+##### List silent variants classifications
+silent_categories <- NULL
+
+for ( i in 1:length(mafFiles) ) {
+  
+  silent_categories <- unique( c(silent_categories, mafInfo[[i]]@maf.silent$Variant_Classification) )
+}
 ```
 
 ```{r dndscv_format_data, comment = NA, message=FALSE, warning=FALSE }
@@ -803,7 +811,7 @@ for ( i in 1:length(mafFiles) ) {
   signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
   signif_genes.methods$OncodriveFML[[i]] <- signif_genes.methods$OncodriveFML[[i]][ !is.na(signif_genes.methods$OncodriveFML[[i]])]
   
-  ##### Report the sinigficant driver genes
+  ##### Report significant driver genes
   oncodriveFML.res.table.signif[[i]] <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
 }
 ```
@@ -1031,13 +1039,11 @@ Selection analyses and cancer driver discovery using [dNdScv](https://github.com
 
 <details>
 <summary>dNdScv model</summary>
-
 Combines local information (synonymous mutations in the gene) and global information (variation of the mutation rate across genes, exploiting epigenomic covariates) to estimate the background mutation rate. It is a preferred model in most situations.
 </details>
 
 <details>
 <summary>dNdSloc model</summary>
-
 Based on local neutrality test, in which the number of synonymous mutations in a gene is used to infer the local mutation rate ([Wong *et al*., 2014](https://www.ncbi.nlm.nih.gov/pubmed/24316979){target="_blank"}), without exploiting additional information from other genes. This test is typically only powered in very large datasets.
 </details>
 
@@ -1508,9 +1514,7 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   
   ##### Check if the OncodriveFML results plot (HTML) exists
-  if ( file.exists(paste0(oncodriveFML.res[i], ".html")) ) {
-    
-    oncodriveFML.res.table.signif <- oncodriveFML.res.table.signif[[i]]
+  if ( nrow(oncodriveFML.res.table.signif[[i]]) > 0 ) {
     
     widges.list[[i]] <- DT::datatable(data = oncodriveFML.res.table.signif[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(oncodriveFML.res.table[[i]]), 'text-align' = 'center' ) %>%
@@ -1531,7 +1535,6 @@ cat("\n\n\n")
 <details>
 <summary>Table legend</summary>
 <font size="2">
-
 * **MUTS** - number of mutations found in the dataset for that gene
 * **MUTS_RECURRENCE** - number of mutations that do not occur in the same position
 * **SAMPLES** - number of mutated samples in the gene
@@ -2207,74 +2210,100 @@ cat("\n\n\n")
 
 Tables with detailed information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
 
+<details>
+<summary>Variants consequence impact definitions</summary>
+<font size="2">
+* **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
+* **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
+</font> 
+</details>
+
 ### dNdScv {.tabset .tabset-fade}
 
 #### Non-synonymous
 
-<details>
-<summary>Non-synonymous variants definition</summary>
-<font size="2">
-
-**Non-synonymous variants** are defined as variants with the following consequences: *`r params$nonSyn_list`*.
-
-</font> 
-</details>
-
 ```{r details_mut_dNdScv_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "all")
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "nonsynonymous")
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
+
+***
 
 #### Silent
 
-<details>
-<summary>Sileny variants definition</summary>
-<font size="2">
-
-**Sileny variants** are defined as variants with the following consequences: *`r unique(mafInfo[[dataset]]@maf.silent$Variant_Classification)`*.
-
-</font> 
-</details>
-
 ```{r details_mut_dNdScv_silent, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "all")
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-
-### dNdSloc
-
-```{r details_mut_dNdSloc, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdSloc[[i]], type = "all")
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "silent")
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
 
 ***
 
-### OncodriveCLUST
+### dNdSloc {.tabset .tabset-fade}
 
-```{r details_mut_OncodriveCLUST, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_dNdSloc_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "all")
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdSloc[[i]], type = "nonsynonymous")
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
 
 ***
 
-### OncodriveFML
+#### Silent
+
+```{r details_mut_dNdSloc_silent, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "silent")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### OncodriveCLUST {.tabset .tabset-fade}
+
+```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "nonsynonymous")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+#### Silent
+
+```{r details_mut_OncodriveCLUST_silent, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "silent")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### OncodriveFML {.tabset .tabset-fade}
 
 **`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
 
-```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
+```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "all")
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "nonsynonymous")
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+#### Silent
+
+```{r details_mut_OncodriveFML_silent, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "silent")
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
