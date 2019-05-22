@@ -11,9 +11,9 @@ output:
   rmdformats::material:
     highlight: kate
 params:
-  maf_dir:
-  maf_files:
-  datasets:
+  maf_dir: 
+  maf_files: 
+  datasets: 
   dnds_q: 
   oncodriveclust_fdr: 
   ratios_ci: 
@@ -1038,57 +1038,55 @@ if ( !is.na(params$genes_blacklist) ) {
 
 Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
 
+NOTE: **Only non-synonymous variants** are used for this analysis.
+
+<details>
+<summary>Variants consequence definitions</summary>
+<font size="2">
+
+* **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
+* **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
+
+</font> 
+</details>
+
 <details>
 <summary>dNdScv model</summary>
+
 Combines local information (synonymous mutations in the gene) and global information (variation of the mutation rate across genes, exploiting epigenomic covariates) to estimate the background mutation rate. It is a preferred model in most situations.
+
 </details>
 
 <details>
 <summary>dNdSloc model</summary>
+
 Based on local neutrality test, in which the number of synonymous mutations in a gene is used to infer the local mutation rate ([Wong *et al*., 2014](https://www.ncbi.nlm.nih.gov/pubmed/24316979){target="_blank"}), without exploiting additional information from other genes. This test is typically only powered in very large datasets.
+
 </details>
 
 <details>
 <summary>Which model to use?</summary>
+
 ***dNdScv*** is a preferred model in most situations. However, low estimates of theta (θ, the overdispersion parameter), particularly θ < 1, may reflect problems with the suitability of the dNdScv model for the dataset. In these cases, it is reasonable to consider the traditional *dN/dS* (***dNdSloc***) model.
+
+The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
+
 </details>
-
-<details>
-<summary>Samples/mutations exclusion</summary>
-By default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. The *buildref* function (described [here](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html){target="_blank"}) can be used to generate the necessary reference file to run [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} on others assembly.
-
-**Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) **are removed** and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample **are subsampled** to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
-</details>
-
-The estimated **theta** (θ, the overdispersion parameter) value(s) for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
 
 ***
 
 <details>
-<summary>Report input parameters</summary>
+<summary>Input parameters</summary>
 <font size="2">
-* Genome assembly version: **`r params$ucsc_genome_assembly`**
+
+* Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
 * Maximum mutations per gene in same sample: **`r params$max_muts_per_gene`**
 * Mutations per gene to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
 * Q-value threshold for reporting significant genes: **`r params$dnds_q`**
-</font> 
-</details>
 
-***
+**Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) are removed and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample are subsampled to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
 
-**NOTE**: this analysis uses **only non-synonymous variants** defined as variants with the following consequences: *`r params$nonSyn_list`*.
-
-<details>
-<summary>Variants consequence impact definitions</summary>
-<font size="2">
-
-* [*High impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	the variant is assumed to have high (disruptive) impact in the protein, probably causing protein truncation, loss of function or triggering nonsense mediated decay.
-
-* [*Moderate impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a non-disruptive variant that might change protein effectiveness.
-
-* [*Low impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a variant that is assumed to be mostly harmless or unlikely to change protein behaviour.
-
-Variants with high/moderate variant consequences include: *frame shift deletions*, *frame shift deletions*, *splice site mutations*, *translation start site mutations*, *nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*.
+NOTE: by default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. The *buildref* function (described [here](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html){target="_blank"}) can be used to generate the necessary reference file to run [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} on others assembly.
 
 </font> 
 </details>
@@ -1256,6 +1254,7 @@ widges.list
 * **ind** - indels
 * **allsubs** - all mutation types without indels
 * **global** - all mutation types including indels
+
 </font> 
 </details>
 
@@ -1291,6 +1290,7 @@ widges.list
 * **non** - nonsense mutations
 * **spl** - splice site mutations
 * **all** - all mutation types
+
 </font> 
 </details>
 
@@ -1302,7 +1302,9 @@ Table(s) presenting global *maximum-likelihood estimates* (*MLEs*) for the *dN/d
 
 <details>
 <summary>What global dN/dS ratios indicate?</summary>
+
 Global dN/dS ratios in somatic evolution of cancer, and seemingly of healthy somatic tissues, appear to show a near-universal pattern of **dN/dS ~1**, with exome-wide dN/dS ratios typically slightly higher than 1 ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The global **dN/dS < 1** is typically caused by contamination of the catalogue of somatic mutations with germline SNPs. An exception are melanoma tumours, which show a bias towards slight underestimation of dN/dS due to the signature of ultraviolet-induced mutations extending beyond the trinucleotide model. The global **dN/dS << 1** reflects a problem of SNP contamination or an inadequate substitution model, and so the evaluation of global dN/dS values can help identify problems in certain datasets.
+
 </details>
 
 ```{r global_dnds_estimates, comment = NA, message=FALSE, warning=FALSE}
@@ -1330,6 +1332,7 @@ widges.list
 * **wspl** - global dN/dS ratios for splice site mutations
 * **wtru** - global dN/dS ratios for all truncating mutations together (including nonsense and splice site mutations)
 * **wall** - global dN/dS ratios for all non-synonymous mutation types
+
 </font> 
 </details>
 
@@ -1362,30 +1365,25 @@ cat("\n\n\n")
 
 Cancer driver genes detection based on positional clustering using [OncodriveClust](http://bg.upf.edu/group/projects/oncodrive-clust.php){target="_blank"} algorithm is based on the fact that most of the variants in cancer causing genes are enriched at few specific loci (hot-spots). According to this concept mutations in these regions potentially change the function of these proteins in a manner that provides an adaptive advantage to cancer cells and consequently are positively selected during clonal evolution of tumours. This property can thus be used to nominate novel candidate driver genes, as described in the paper [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"}.
 
-***
+NOTE: **Only non-synonymous variants** are used for this analysis.
 
 <details>
-<summary>Report input parameters</summary>
+<summary>Variants consequence definitions</summary>
 <font size="2">
-* False discovery rate (FDR) threshold for reporting significant genes: **`r params$oncodriveclust_fdr`**
+
+* **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
+* **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
+
 </font> 
 </details>
 
 ***
 
-**NOTE**: this analysis uses **only non-synonymous variants** defined as variants with the following consequences: *`r params$nonSyn_list`*.
-
 <details>
-<summary>Variants consequence impact definitions</summary>
+<summary>Input parameters</summary>
 <font size="2">
 
-* [*High impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	the variant is assumed to have high (disruptive) impact in the protein, probably causing protein truncation, loss of function or triggering nonsense mediated decay.
-
-* [*Moderate impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a non-disruptive variant that might change protein effectiveness.
-
-* [*Low impact variant consequence*](http://asia.ensembl.org/Help/Glossary?id=535){target="_blank"} -	a variant that is assumed to be mostly harmless or unlikely to change protein behaviour.
-
-Variants with high/moderate variant consequences include: *frame shift deletions*, *frame shift deletions*, *splice site mutations*, *translation start site mutations*, *nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*.
+* False discovery rate (FDR) threshold for reporting significant genes: **`r params$oncodriveclust_fdr`**
 
 </font> 
 </details>
@@ -1487,24 +1485,26 @@ cat("\n\n\n")
 
 [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} results are **`r if ( runOncodrivefmlChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
 
-`r if ( runOncodrivefmlChunk ) { c(paste0("The p- and q-values used for calling driver genes were set to ", params$oncodrivefml_p, " and ", params$oncodrivefml_q, ", respectively.")) } else { c(" ") }`
-
 ***
 
 <details>
 <summary>OncodriveFML settings</summary>
 <font size="2">
+
 `r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0(unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
+
 </font> 
 </details>
 
 ***
 
 <details>
-<summary>Report input parameters</summary>
+<summary>Input parameters</summary>
 <font size="2">
+
 * P-value threshold for reporting significant genes: **`r params$oncodrivefml_p`**
 * Q-value threshold for reporting significant genes: **`r params$oncodrivefml_q`**
+
 </font> 
 </details>
 
@@ -1570,6 +1570,7 @@ cat("\n\n\n")
 <details>
 <summary>Table legend</summary>
 <font size="2">
+
 * **MUTS** - number of mutations found in the dataset for that gene
 * **MUTS_RECURRENCE** - number of mutations that do not occur in the same position
 * **SAMPLES** - number of mutated samples in the gene
@@ -1577,6 +1578,7 @@ cat("\n\n\n")
 * **Q_VALUE** - *P_VALUE* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
 * **P_VALUE_NEG** - times that the observed value is lower than or equal to the expected value, divided by the number of randomizations
 * **Q_VALUE_NEG** - *P_VALUE_NEG* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
+
 </font> 
 </details>
 
@@ -2125,7 +2127,9 @@ if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[
 
 ## Mutations annotation {.tabset}
 
-Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples. **Note**, mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table below.
+Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples.
+
+NOTE, mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
 
 ### dNdScv
 
@@ -2246,10 +2250,12 @@ cat("\n\n\n")
 Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
 
 <details>
-<summary>Variants consequence impact definitions</summary>
+<summary>Variants consequence definitions</summary>
 <font size="2">
+
 * **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
 * **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
+
 </font> 
 </details>
 
