@@ -784,6 +784,9 @@ for ( i in 1:length(mafFiles) ) {
   
   signif_genes_table.datasets[[i]]$OncodriveCLUST <- oncodriveClust.res[[datasets.list[i]]][[1]][ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr, ]
   rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
+  
+  ##### Organise the table of significant genes
+  signif_genes_table.datasets[[i]]$OncodriveCLUST <- signif_genes_table.datasets[[i]]$OncodriveCLUST[ , c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")]
 }
 ```
 
@@ -814,6 +817,9 @@ for ( i in 1:length(mafFiles) ) {
   ##### Report significant driver genes
   signif_genes_table.datasets[[i]]$OncodriveFML <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
   rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
+  
+  ##### Organise the table of significant genes
+  signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
 }
 ```
 
@@ -2131,7 +2137,7 @@ if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[
 
 Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples.
 
-NOTE, mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
+NOTE: mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
 
 ### dNdScv
 
