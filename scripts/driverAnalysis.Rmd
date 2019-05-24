@@ -803,8 +803,11 @@ for ( i in 1:length(mafFiles) ) {
   oncodriveFML.res.table[[i]] <- subset(oncodriveFML.res.table[[i]], select=c(names(oncodriveFML.res.table[[i]])[c(col_idx, c(1:ncol(oncodriveFML.res.table[[i]]))[-col_idx])]))
 
   ##### Order the table by P_VALUE, MUTS and SAMPLES
+  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$SAMPLES, oncodriveFML.res.table[[i]]$MUTS, decreasing = TRUE), ]
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order(oncodriveFML.res.table[[i]]$P_VALUE), ]
-  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$MUTS, oncodriveFML.res.table[[i]]$SAMPLES, decreasing = TRUE), ]
+  
+  ##### calculate expected p-value
+  oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
     
   ##### Record sinigficant driver genes for each dataset and method
   signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
@@ -819,7 +822,7 @@ for ( i in 1:length(mafFiles) ) {
   rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
   
   ##### Organise the table of significant genes
-  signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
+  signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
 }
 ```
 
@@ -1137,7 +1140,7 @@ for ( i in 1:length(mafFiles) ) {
     ##### Generate scatter-plot
     p <- plot_ly(data.df, x = ~mutations_no, y = -log(data.df$q_global,10), color = data.df$p_ind, size = -log(data.df$p_subs,10), text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
-      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = TRUE, legend = list(orientation = "v", y = 0.9))
+      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
   
     ##### Add plot to the list for htmlwidgets
     widges.list[[i]] <- as_widget(ggplotly(p))
@@ -1428,7 +1431,7 @@ for ( i in 1:length(mafFiles) ) {
       ##### Generate scatter-plot
       p <- plot_ly(data.df, x = ~mutations_no, y = -log(data.df$fdr,10), color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
-        layout(title = datasets.list[i], xaxis = list(title = "Number of mutations in clusters", range = x_range), yaxis = list(title = "-log10( FDR )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = TRUE, legend = list(orientation = "v", y = 0.9))
+        layout(title = datasets.list[i], xaxis = list(title = "Number of mutations in clusters", range = x_range), yaxis = list(title = "-log10( FDR )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
     
       ##### Add plot to the list for htmlwidgets
       widges.list[[i]] <- as_widget(ggplotly(p))
@@ -1516,12 +1519,130 @@ cat("\n\n\n")
 
 ***
 
-#### Plot
+#### Plot {.tabset}
+
+##### Interactive  {.tabset}
+
+###### All genes
+
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for **all genes**. The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
+
+```{r oncodriveFML_plot_interactive, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
+suppressMessages(library(plotly))
+
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  if ( nrow(oncodriveFML.res.table[[datasets.list[i]]]) > 0 ) {
+    
+    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
+    q_obs <- oncodriveFML.res.table[[datasets.list[i]]]$Q_VALUE
+    q_obs[ q_obs == 0 ] <- 1*10^-16
+    p_obs <- oncodriveFML.res.table[[datasets.list[i]]]$P_VALUE
+    p_obs[ p_obs == 0 ] <- 1*10^-16
+    p_exp <- oncodriveFML.res.table[[datasets.list[i]]]$P_VALUE_EXP
+    p_exp[ p_exp == 0 ] <- 1*10^-16
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(oncodriveFML.res.table[[datasets.list[i]]]$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), oncodriveFML.res.table[[datasets.list[i]]]$MUTS )
+    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no")
+    
+    ##### Get significant genes' names for the plotly add_text option
+    genes_text <- data.df$gene[ 1:length(signif_genes.datasets[[datasets.list[i]]]$OncodriveFML) ]
+    genes_text <- c(as.character(genes_text), rep(" ", nrow(data.df)-length(genes_text)))
+    
+    ##### Calculate x and y axis rangeby adding 10% of the original range
+    x_range <- c(0, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    y_range <- c(0, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
+     
+    ##### Generate scatter-plot
+    p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      add_text(textfont = list(size = 10), textposition = "top", text=genes_text) %>%
+      add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+      layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+  
+    ##### Add plot to the list for htmlwidgets
+    widges.list[[i]] <- as_widget(ggplotly(p))
+    
+    ##### Save the plot as html (PLOTLY)
+    htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
+    
+  } else {
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+  }
+}
+
+##### Detach plotly package. Otherwise it clashes with other graphics devices
+detach("package:plotly", unload=FALSE)
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+***
+
+###### Significant cancer genes
+
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for **significant cancer genes** only (`r paste(paste0("p-value < ", params$oncodrivefml_p), paste0("q-value < ", params$oncodrivefml_q), sep = ", ")`). The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
+
+```{r oncodriveFML_plot_interactive_signif, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
+suppressMessages(library(plotly))
+
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML) > 0 ) {
+    
+    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
+    q_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML$Q_VALUE
+    q_obs[ q_obs == 0 ] <- 1*10^-16
+    p_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML$P_VALUE
+    p_obs[ p_obs == 0 ] <- 1*10^-16
+    p_exp <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML$P_VALUE_EXP
+    p_exp[ p_exp == 0 ] <- 1*10^-16
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML$MUTS )
+    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no")
+    
+    ##### Calculate x and y axis rangeby adding 10% of the original range
+    x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
+    
+    ##### Generate scatter-plot
+    p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      add_text(textfont = list(size = 10), textposition = "top") %>%
+      add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+      layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+  
+    ##### Add plot to the list for htmlwidgets
+    widges.list[[i]] <- as_widget(ggplotly(p))
+    
+  } else {
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+  }
+}
+
+##### Detach plotly package. Otherwise it clashes with other graphics devices
+detach("package:plotly", unload=FALSE)
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+
+***
+
+##### Static
 
 [Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
 
 NOTE, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Significant cancer genes* tab to see the full list).
- 
+
 ```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
 for ( i in 1:length(mafFiles) ) {
   
@@ -1534,8 +1655,8 @@ for ( i in 1:length(mafFiles) ) {
     cat("<br/><br/><br/>")
 
     ##### Copy the OncodriveFML results plot (HTML and PNG) to the report folder
-    file.copy(paste0(oncodriveFML.res[i], ".png"), paste0(outDir, "/driver_analysis_OncodriveFML_plot_", datasets.list[i], ".png"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
-    file.copy(paste0(oncodriveFML.res[i], ".html"), paste0(outDir, "/driver_analysis_OncodriveFML_plot_", datasets.list[i], ".html"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    file.copy(paste0(oncodriveFML.res[i], ".png"), paste0(outDir, "/driver_analysis_oncodriveFML_plot_", datasets.list[i], ".png"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    file.copy(paste0(oncodriveFML.res[i], ".html"), paste0(outDir, "/driver_analysis_oncodriveFML_plot_", datasets.list[i], ".html"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
     
   } else {
     cat(paste("OncodriveFML results plot \"", paste0(oncodriveFML.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
