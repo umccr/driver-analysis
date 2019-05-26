@@ -396,7 +396,7 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
   ##### Report datasets with no mutations reported in selected genes
   if ( length(datasets.noMut) != 0 ) {
     
-    cat(paste("Note, queried gene(s)", genes, "have no non-synonymous variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n\n\n", sep=" "))
+    cat(paste("Note, queried gene(s) have no non-synonymous variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n\n\n", sep=" "))
   }
   
   ##### Print a list of htmlwidgets
@@ -466,7 +466,7 @@ if ( !is.na(params$oncodrivefml) ){
     } else {
       ##### Create empty data frame
       oncodriveFML.res.table[[i]] <- data.frame(matrix(NA, nrow = 0, ncol = 12))
-      names(oncodriveFML.res.table[[i]]) <- c("GENE_ID", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS", "SYMBOL")
+      names(oncodriveFML.res.table[[i]]) <- c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")
     }
   }
   runOncodrivefmlChunk <- TRUE
@@ -792,8 +792,8 @@ for ( i in 1:length(mafFiles) ) {
 
 ```{r oncodriveFML_load_results,  include=FALSE, eval=runOncodrivefmlChunk}
 ##### Create a list to store OncodriveFML info for individual datasets
-signif_genes.methods$oncodriveFML <- vector("list", length(datasets.list))
-names(signif_genes.methods$oncodriveFML) <- datasets.list
+signif_genes.methods$OncodriveFML <- vector("list", length(datasets.list))
+names(signif_genes.methods$OncodriveFML) <- datasets.list
 
 ###### Record results for each dataset
 for ( i in 1:length(mafFiles) ) {
@@ -805,21 +805,23 @@ for ( i in 1:length(mafFiles) ) {
   ##### Order the table by P_VALUE, MUTS and SAMPLES
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$SAMPLES, oncodriveFML.res.table[[i]]$MUTS, decreasing = TRUE), ]
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order(oncodriveFML.res.table[[i]]$P_VALUE), ]
+  rownames(oncodriveFML.res.table[[i]]) = NULL
   
-  ##### calculate expected p-value
+  ##### Calculate expected p-value
   oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
-    
-  ##### Record sinigficant driver genes for each dataset and method
+
+  ##### Record sinigficant driver genes for each dataset
   signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
-  signif_genes.methods$OncodriveFML[[i]] <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
   
   ##### Remove NAs
   signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
-  signif_genes.methods$OncodriveFML[[i]] <- signif_genes.methods$OncodriveFML[[i]][ !is.na(signif_genes.methods$OncodriveFML[[i]])]
   
   ##### Report significant driver genes
   signif_genes_table.datasets[[i]]$OncodriveFML <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
   rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
+  
+  ##### Record sinigficant driver genes for each dataset and method
+  signif_genes.methods$OncodriveFML[[i]] <- signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
@@ -1130,15 +1132,15 @@ for ( i in 1:length(mafFiles) ) {
     mutations_no <- rowSums(signif_genes_table.datasets[[i]]$dNdScv[ , names(signif_genes_table.datasets[[i]]$dNdScv) %in% c("n_syn", "n_mis", "n_non", "n_spl", "n_ind") ])
     
     ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdScv$gene_name, q_global, mutations_no, p_subs, p_ind )
+    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdScv$gene_name, -log(q_global,10), mutations_no, -log(p_subs,10), -log(p_ind,10) )
     colnames(data.df) <- c("gene", "q_global", "mutations_no", "p_subs", "p_ind")
     
     ##### Calculate x and y axis rangeby adding 10% of the original range
     x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-    y_range <- c(0, max(-log(data.df$q_global,10)) + max(-log(data.df$q_global,10))*0.1)
+    y_range <- c(0, max(data.df$q_global) + max(data.df$q_global)*0.1)
     
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = ~mutations_no, y = -log(data.df$q_global,10), color = data.df$p_ind, size = -log(data.df$p_subs,10), text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    p <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
       layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
   
@@ -1186,15 +1188,15 @@ for ( i in 1:length(mafFiles) ) {
     mutations_no <- rowSums(signif_genes_table.datasets[[i]]$dNdSloc[ , names(signif_genes_table.datasets[[i]]$dNdSloc) %in% c("n_syn", "n_mis", "n_non", "n_spl") ])
     
     ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdSloc$gene_name, q_all, mutations_no, q_mis )
+    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdSloc$gene_name, -log(q_all,10), mutations_no, -log(q_mis,10) )
     colnames(data.df) <- c("gene", "q_all", "mutations_no", "q_mis")
     
     ##### Calculate x and y axis rangeby adding 10% of the original range
     x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-    y_range <- c(0, max(-log(data.df$q_all,10)) + max(-log(data.df$q_all,10))*0.1)
+    y_range <- c(0, max(data.df$q_all) + max(data.df$q_all)*0.1)
     
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = ~mutations_no, y = -log(data.df$q_all,10), size = -log(data.df$q_mis,10), text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    p <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_all, size = data.df$q_mis, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
       layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE )
 
@@ -1421,15 +1423,15 @@ for ( i in 1:length(mafFiles) ) {
       fdr[ fdr == 0 ] <- 1*10^-16
       
       ##### Prepare data frame for plotting with plotly
-      data.df <- data.frame(oncodriveClust.res.table$Hugo_Symbol, fdr, oncodriveClust.res.table$muts_in_clusters, oncodriveClust.res.table$clusterScores, oncodriveClust.res.table$clusters )
+      data.df <- data.frame(oncodriveClust.res.table$Hugo_Symbol, -log(fdr,10), oncodriveClust.res.table$muts_in_clusters, oncodriveClust.res.table$clusterScores, oncodriveClust.res.table$clusters )
       colnames(data.df) <- c("gene", "fdr", "mutations_no", "clusterScores", "clusters")
       
       ##### Calculate x and y axis rangeby adding 10% of the original range
       x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-      y_range <- c(0, max(-log(data.df$fdr,10)) + max(-log(data.df$fdr,10))*0.1)
+      y_range <- c(0, max(data.df$fdr) + max(data.df$fdr)*0.1)
       
       ##### Generate scatter-plot
-      p <- plot_ly(data.df, x = ~mutations_no, y = -log(data.df$fdr,10), color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      p <- plot_ly(data.df, x = ~mutations_no, y = data.df$fdr, color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         layout(title = datasets.list[i], xaxis = list(title = "Number of mutations in clusters", range = x_range), yaxis = list(title = "-log10( FDR )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
     
@@ -1614,10 +1616,21 @@ for ( i in 1:length(mafFiles) ) {
     y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
     
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
-      add_text(textfont = list(size = 10), textposition = "top") %>%
-      add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
-      layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+    ##### Check if any of the significant genes have determined q-value
+    if ( !all(is.na(data.df$q)) ) {
+      
+      p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+      
+    } else {
+      
+      p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE)
+    }
   
     ##### Add plot to the list for htmlwidgets
     widges.list[[i]] <- as_widget(ggplotly(p))
@@ -1703,9 +1716,10 @@ cat("\n\n\n")
 * **MUTS** - number of mutations found in the dataset for that gene
 * **MUTS_RECURRENCE** - number of mutations that do not occur in the same position
 * **SAMPLES** - number of mutated samples in the gene
-* **P_VALUE** - times that the observed value is higher than or equal to the expected value, divided by the number of randomizations
+* **P_VALUE** - times that the observed value is higher than or equal to the expected value, divided by the number of randomisations
+* **P_VALUE_EXP** - expected *P_VALUE*
 * **Q_VALUE** - *P_VALUE* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
-* **P_VALUE_NEG** - times that the observed value is lower than or equal to the expected value, divided by the number of randomizations
+* **P_VALUE_NEG** - times that the observed value is lower than or equal to the expected value, divided by the number of randomisations
 * **Q_VALUE_NEG** - *P_VALUE_NEG* corrected using the *Benjamini-Hochberg* correction (for samples with at least 2 samples)
 
 </font> 
