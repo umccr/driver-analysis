@@ -1,0 +1,27 @@
+# usage: conda env create -p $(pwd)/miniconda/envs/rnaseq-report --file environment.yaml 
+# -p flag should point to your miniconda installation path.
+
+# name of the conda environment
+name: rnaseq-report
+
+#the paths that conda takes a look for packages. 
+#avoid using anaconda as we have experienced issues with it
+channels:
+        - jacek_marzec
+        - conda-forge
+        - bioconda
+        - r
+        - plotly
+        - defaults
+
+#install following packages in the conda environment
+dependencies:
+        - r-knitr
+        - r-dndscv
+        - r-ggplot2
+        - r-dt
+        - r-upsetr
+        - r-stringr
+        - r-magick
+        - bioconductor-maftools
+
