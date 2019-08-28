@@ -267,7 +267,7 @@ Below are command line use examples for generating *Driver Analyses Summary* rep
 ```
 oncodrivefml_conf=/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/example/oncodrivefml_v2.conf
 
-Rscript scripts/driverAnalysis.R --maf_dir $data --maf_files Avner-primary_tissue.maf,Avner-organoids.maf --datasets Primary_tissue,Organoid --q_value 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 200 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --oncodrivefml $data/Avner-primary_tissue_oncodrivefml_analysis/Avner-primary_tissue-oncodrivefml,$data/Avner-organoids_oncodrivefml_analysis/Avner-organoids-oncodrivefml --oncodrivefml_conf $oncodrivefml_conf --out_folder Avner_driver_analysis_report
+Rscript scripts/driverAnalysis.R --maf_dir $data --maf_files Avner-primary_tissue.maf,Avner-organoids.maf --datasets Primary_tissue,Organoid --dnds_q 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 200 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --oncodrivefml $data/Avner-primary_tissue_oncodrivefml_analysis/Avner-primary_tissue-oncodrivefml,$data/Avner-organoids_oncodrivefml_analysis/Avner-organoids-oncodrivefml --oncodrivefml_conf $oncodrivefml_conf --out_folder Avner_driver_analysis_report
 ```
 
 <br />
