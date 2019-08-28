@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     theme: readable
+    css: driverAnalysis.css
     toc: true
     toc_float: true
     code_folding: hide
@@ -29,6 +30,7 @@ params:
   oncodrivefml_q: 
   oncodrivefml_conf: 
   remove_duplicated_variants: 
+  hide_code_btn: TRUE
   out_folder: 'Driver_analysis_report'
 ---
 
@@ -42,6 +44,15 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[CHASMplus](https://github.com/KarchinLab/CHASMplus){target="_blank"}** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4){target="_blank"} for details, ...work in progress)
 * **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"}** (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details, ...work in progress)
 
+```{r code_display, echo = FALSE}
+##### Include or exclude the "Code" buttom allowing to "show"/"hide" code chunks from the report 
+if ( params$hide_code_btn ) {
+  writeLines(".btn { display: none ;", con = "driverAnalysis.css")
+} else {
+  writeLines(" ", con = "driverAnalysis.css")
+}
+```
+ 
 ```{r define_functions, comment=NA, message=FALSE, warning=FALSE}
 ##### Define functions
 
