@@ -17,6 +17,7 @@ channels:
 #install following packages in the conda environment
 dependencies:
         - r-knitr
+        - r-optparse
         - r-dndscv
         - r-ggplot2
         - r-dt
