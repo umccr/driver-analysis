@@ -61,19 +61,19 @@ option_list <- list(
               help="List of MAF files to be processed"),
   make_option(c("-c", "--datasets"), action="store", default=NA, type='character',
               help="Desired names of each dataset"),
-  make_option(c("-q", "--dnds_q"), action="store", default=NA, type='character',
+  make_option(c("-q", "--dnds_q"), action="store", default=0.1, type='double',
               help="dNdS method q-value threshold for reporting significant genes"),
-  make_option(c("-k", "--oncodriveclust_fdr"), action="store", default=NA, type='character',
+  make_option(c("-k", "--oncodriveclust_fdr"), action="store", default=0.5, type='double',
               help="OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes"),
-  make_option(c("-r", "--ratios_ci"), action="store", default=NA, type='character',
+  make_option(c("-r", "--ratios_ci"), action="store", default=FALSE, type='logical',
               help="Calculate per-gene confidence intervals for the dN/dS ratios"),
-  make_option(c("-u", "--hypermut_sample_cutoff"), action="store", default=NA, type='character',
+  make_option(c("-u", "--hypermut_sample_cutoff"), action="store", default=250, type='integer',
               help="Mutations per gene to define ultra-hypermutator samples"),
-  make_option(c("-s", "--max_muts_per_gene"), action="store", default=NA, type='character',
+  make_option(c("-s", "--max_muts_per_gene"), action="store", default=3, type='integer',
               help="Maximum mutations per gene in same sample"),
-  make_option(c("-g", "--ucsc_genome_assembly"), action="store", default=NA, type='character',
+  make_option(c("-g", "--ucsc_genome_assembly"), action="store", default=19, type='integer',
               help="Version of UCSC genome assembly to be used as a reference"),
-  make_option(c("-o", "--out_folder"), action="store", default=NA, type='character',
+  make_option(c("-o", "--out_folder"), action="store", default="Driver_analysis_report", type='character',
               help="Output directory"),
   make_option(c("-l", "--genes_list"), action="store", default=NA, type='character',
               help="Location and name of a file listing genes of interest to be considered in the report"),
@@ -85,13 +85,13 @@ option_list <- list(
               help="List of variant classifications to be considered as non-synonymous"),
   make_option(c("-f", "--oncodrivefml"), action="store", default=NA, type='character',
               help="Name of folder and the results files from OncodriveFML analysis"),
-  make_option(c("-e", "--oncodrivefml_p"), action="store", default=NA, type='character',
+  make_option(c("-e", "--oncodrivefml_p"), action="store", default=0.01, type='double',
               help="P-value threshold for reporting OncodriveFML results. Defualt values is 0.1"),
-  make_option(c("-j", "--oncodrivefml_q"), action="store", default=NA, type='character',
+  make_option(c("-j", "--oncodrivefml_q"), action="store", default=0.1, type='double',
               help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
   make_option(c("-a", "--oncodrivefml_conf"), action="store", default=NA, type='character',
               help="Directory and name of OncodriveFML configuration file"),
-  make_option(c("-v", "--remove_duplicated_variants"), action="store", default=NA, type='character',
+  make_option(c("-v", "--remove_duplicated_variants"), action="store", default=TRUE, type='logical',
               help="Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene?")
 )
 
@@ -114,56 +114,6 @@ if (is.na(opt$maf_dir) || is.na(opt$maf_files) || is.na(opt$datasets) ) {
   q()
 }
 
-##### Write the results into folder "Driver_analysis_report" if no output directory is specified
-if ( is.na(opt$out_folder) ) {
-	opt$out_folder<- "Driver_analysis_report"
-}
-
-##### Set default for dN/dS method q-value threshold
-if ( is.na(opt$dnds_q) ) {
-  opt$dnds_q <- 0.1
-}
-
-##### Set default for OncodriveClust method FDR threshold
-if ( is.na(opt$oncodriveclust_fdr) ) {
-  opt$oncodriveclust_fdr <- 0.5
-}
-
-##### Set default for per-gene confidence intervalsd
-if ( is.na(opt$ratios_ci) ) {
-  
-  opt$ratios_ci <- FALSE
-  
-} else if ( as.character(opt$ratios_ci) != "FALSE" && as.character(opt$ratios_ci) != "TRUE" ) {
-  
-  cat("\nMake sure that the \"ratios_ci\" is either \"TRUE\" or \"FALSE\"\n\n")
-  q()
-}
-
-##### Set default for calling ultra-hypermutator samples
-if ( is.na(opt$hypermut_sample_cutoff) ) {
-  opt$hypermut_sample_cutoff <- 250
-}
-
-##### Set default for maximum mutations per gene in same sample
-if ( is.na(opt$max_muts_per_gene) ) {
-  opt$max_muts_per_gene <- 3
-}
-
-##### Set default for UCSC genome assembly version
-if ( is.na(opt$ucsc_genome_assembly) ) {
-  opt$ucsc_genome_assembly <- 19
-}
-
-##### Set default for OncodriveFML p- and q-values
-if ( is.na(opt$oncodrivefml_p) ) {
-  opt$oncodrivefml_p <- 0.01
-}
-
-if ( is.na(opt$oncodrivefml_q) ) {
-  opt$oncodrivefml_q <- 0.1
-}
-
 ##### Pre-define list of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants. Default uses Variant Classifications with High/Moderate variant consequences (http://asia.ensembl.org/Help/Glossary?id=535)
 if ( is.na(opt$nonSyn_list) ) {
   opt$nonSyn_list<- c("Frame_Shift_Del","Frame_Shift_Ins","Splice_Site","Translation_Start_Site","Nonsense_Mutation", "Nonstop_Mutation", "In_Frame_Del","In_Frame_Ins", "Missense_Mutation")
@@ -171,16 +121,5 @@ if ( is.na(opt$nonSyn_list) ) {
   opt$nonSyn_list <- unlist(strsplit(opt$nonSyn_list, split=',', fixed=TRUE))
 }
 
-##### Set defualt paramters
-if ( is.na(opt$remove_duplicated_variants) ) {
-  opt$remove_duplicated_variants = TRUE
-}
-
-##### Check input paramters
-if ( tolower(opt$remove_duplicated_variants) != "true" && tolower(opt$remove_duplicated_variants) != "false"  ) {
-  cat("\nMake sure that the \"--removeDuplicatedVariants\" parameter is set to \"TRUE\" or \"FALSE\"!\n\n")
-  q()
-}
-
 ##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, dnds_q = as.numeric(opt$dnds_q), oncodriveclust_fdr = as.numeric(opt$oncodriveclust_fdr), ratios_ci = as.logical(opt$ratios_ci), hypermut_sample_cutoff = as.numeric(opt$hypermut_sample_cutoff), max_muts_per_gene = as.numeric(opt$max_muts_per_gene), ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, remove_duplicated_variants = opt$remove_duplicated_variants))
+rmarkdown::render(input = "driverAnalysis.Rmd", output_dir = paste(opt$maf_dir, opt$out_folder, "Report", sep = "/"), output_file = paste0(opt$out_folder, ".html"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, dnds_q = opt$dnds_q, oncodriveclust_fdr = opt$oncodriveclust_fdr, ratios_ci = opt$ratios_ci, hypermut_sample_cutoff = opt$hypermut_sample_cutoff, max_muts_per_gene = opt$max_muts_per_gene, ucsc_genome_assembly = opt$ucsc_genome_assembly, out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, remove_duplicated_variants = opt$remove_duplicated_variants))
