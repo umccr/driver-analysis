@@ -26,6 +26,7 @@ dependencies:
         - r-stringr
         - r-plotly=4.9.0
         - r-magick
+        - r-devtools
         - bioconductor-iranges
         - bioconductor-maftools
 
