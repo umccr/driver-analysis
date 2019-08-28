@@ -10,4 +10,5 @@
 # R generated files #
 ######################
 *.Rhistory
+*.css
 
