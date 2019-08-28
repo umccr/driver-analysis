@@ -452,7 +452,7 @@ if ( !is.na(params$genes_list) ){
 }
 
 ##### Create directory for output files
-outDir <- paste(params$maf_dir, params$out_folder, sep = "/")
+outDir <- paste(params$maf_dir, params$out_folder, "results", sep = "/")
 if ( !file.exists(params$out_folder) ){
 
   dir.create(outDir, recursive=TRUE)
