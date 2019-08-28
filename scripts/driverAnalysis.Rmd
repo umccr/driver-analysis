@@ -682,12 +682,12 @@ for ( i in 1:length(mafFiles) ) {
     signif_genes_table.datasets[[i]]$dNdScv <- merge( signif_genes_table.datasets[[i]]$dNdScv, ci[[i]], by.x="gene_name", by.y="gene", all.x = TRUE, all.y = FALSE, sort = FALSE)
     
     ##### Organise the table of significant genes
-    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "mis_low", "mis_high", "pmis_cv", "qmis_cv", "wnon_cv", "wspl_cv", "tru_mle", "tru_low", "tru_high", "ptrunc_cv", "qtrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
+    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "mis_low", "mis_high", "pmis_cv", "wnon_cv", "wspl_cv", "tru_mle", "tru_low", "tru_high", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
     
   } else {
     
     ##### Organise the table of significant genes
-    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "pmis_cv", "qmis_cv", "wnon_cv", "wspl_cv", "ptrunc_cv", "qtrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
+    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
   }
 
   ##### Record excluded (hypermutated) samples
@@ -706,12 +706,12 @@ for ( i in 1:length(mafFiles) ) {
   if (!is.null(dndsout[[i]]$exclmuts)) {
     
     exclmuts[[i]] <- dndsout[[i]]$exclmuts
-    exclmuts[[i]] <- exclmuts[[i]][, c("gene", "sampleID", "chr", "pos", "ref", "mut", "start", "end", "geneind")]
+    exclmuts[[i]] <- exclmuts[[i]][, c("gene", "sampleID", "chr", "pos", "ref", "mut", "geneind")]
   
     } else {
     
     exclmuts[[i]] <- data.frame(matrix(ncol = 9, nrow = 0))
-    names(exclmuts[[i]]) <- c("gene", "sampleID", "chr", "pos", "ref", "mut", "start", "end", "geneind")
+    names(exclmuts[[i]]) <- c("gene", "sampleID", "chr", "pos", "ref", "mut", "geneind")
   }
   
   ##### Extract global maximum-likelihood estimates (MLEs) for the dN/dS ratios across all genes
@@ -1239,14 +1239,14 @@ for ( i in 1:length(mafFiles) ) {
     widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv","wnon_cv", "wspl_cv", "wind_cv", "mis_mle", "tru_mle", "mis_low", "tru_low", "mis_high", "tru_high"), 1) %>%
-    formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "pind_cv", "qmis_cv", "qtrunc_cv", "qallsubs_cv", "pglobal_cv", "qglobal_cv"), 6)
+    formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "pind_cv", "qallsubs_cv", "pglobal_cv", "qglobal_cv"), 6)
     
   } else {
     
     widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv", "wind_cv"), 1) %>%
-    formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "qmis_cv", "ptrunc_cv", "qtrunc_cv", "pallsubs_cv", "qallsubs_cv", "pind_cv"), 6)
+    formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "pind_cv"), 6)
   }
 }
 
