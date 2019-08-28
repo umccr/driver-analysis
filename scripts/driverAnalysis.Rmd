@@ -14,6 +14,7 @@ output:
 params:
   maf_dir: 
   maf_files: 
+  samples_id_cols: 
   datasets: 
   dnds_q: 
   oncodriveclust_fdr: 
@@ -412,6 +413,16 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
   
   ##### Print a list of htmlwidgets
   widges.list
+}
+
+##### A wrapper to saveWidget which compensates for arguable BUG in saveWidget which requires `file` to be in current working directory (see post https://github.com/ramnathv/htmlwidgets/issues/299 )
+saveWidgetFix <- function ( widget, file, ...) {
+  wd<-getwd()
+  on.exit(setwd(wd))
+  outDir<-dirname(file)
+  file<-basename(file)
+  setwd(outDir);
+  htmlwidgets::saveWidget(widget,file=file,...)
 }
 ```
 
@@ -1160,7 +1171,7 @@ for ( i in 1:length(mafFiles) ) {
     widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
   } else {
       cat(paste("None of the mutated genes demonstrated significant global q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
@@ -1216,7 +1227,7 @@ for ( i in 1:length(mafFiles) ) {
     widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
   
   } else {
     cat(paste("None of the mutated genes demonstrated significant q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
@@ -1451,7 +1462,7 @@ for ( i in 1:length(mafFiles) ) {
       widges.list[[i]] <- as_widget(ggplotly(p))
       
       ##### Save the plot as html (PLOTLY)
-      htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+      saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
@@ -1581,7 +1592,7 @@ for ( i in 1:length(mafFiles) ) {
     widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    htmlwidgets::saveWidget(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
     
   } else {
       cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
