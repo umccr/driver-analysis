@@ -407,6 +407,7 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
 ```{r load_libraries, warning=FALSE}
 suppressMessages(library(knitr))
 suppressMessages(library(maftools))
+suppressMessages(library(IRanges))
 suppressMessages(library(dndscv))
 suppressMessages(library(ggplot2))
 suppressMessages(library(DT))
