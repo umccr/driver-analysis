@@ -1,0 +1,32 @@
+##### Building R packages in conda
+
+##################################################
+#
+#	dndscv
+#
+##################################################
+
+# Create a conda environment to build the package in
+conda create -n dndscv -c conda-forge -c defaults conda-build anaconda-client conda-verify python=3.6
+
+
+# Activate the environment
+conda activate dndscv
+
+# Build conda package. This goes through all of the dependencies and their dependencies and searches for them in the conda-forge and bioconda Conda channels. The conda skeleton cran command automatically pulls the latest tag
+conda skeleton cran https://github.com/im3sanger/dndscv
+
+# Need to fix list of dependencies in created /path/to/miniconda/envs/r-dndscv/meta.yaml and change "r-biostrings" to "bioconductor-biostrings" and "r-genomicranges" to "bioconductor-genomicranges" in two places (host and run sections)
+
+# Now build the package
+conda build -c conda-forge -c bioconda r-dndscv
+
+# Upload created conda package to https://anaconda.org
+anaconda upload /path/to/miniconda/envs/cbuild/conda-bld/linux-64/r-dndscv-0.0.0.9-r35_0.tar.bz2 
+
+# Convert package to MacOS
+conda convert -p osx-64 /path/to/miniconda/envs/cbuild/conda-bld/linux-64/r-dndscv-0.0.0.9-r35_0.tar.bz2 -o /path/to/miniconda/envs/cbuild/conda-bld -f
+
+# Upload created conda package to https://anaconda.org
+anaconda upload /path/to/miniconda/envs/cbuild/conda-bld/osx-64/r-dndscv-0.0.0.9-r35_0.tar.bz2
+
