@@ -276,4 +276,4 @@ Rscript driverAnalysis.R --maf_dir $data --maf_files Avner-primary_tissue.maf,Av
 
 <br />
 
-This will generate *Avner_driver_analysis_report* report with summary tables and plots within *Avner_driver_analysis_report* folder.
+This will generate *Avner_driver_analysis_report.html* report with summary tables and plots within `Avner_driver_analysis_report` folder, as well as `results` folder with intermediate files, including plots and tables that are presented in the report.
