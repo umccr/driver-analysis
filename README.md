@@ -258,7 +258,7 @@ Argument | Description
 --remove_duplicated_variants | Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? (OPTIONAL; defulat is `TRUE`). **Note**, option `TRUE` removes all repeated variants as duplicated entries. `FALSE` results in keeping all of them)
 <br />
 
-**Packages**: *[maftools](https://www.bioconductor.org/packages/devel/bioc/vignettes/maftools/inst/doc/maftools.html)*, *[optparse](https://cran.r-project.org/web/packages/optparse/optparse.pdf)*, *[knitr](https://cran.r-project.org/web/packages/knitr/knitr.pdf)*, *[DT](https://rstudio.github.io/DT/)*, *[ggplot2](https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf)*, *[dndscv](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/dNdScv.html)*, *[UpSetR](https://cran.r-project.org/web/packages/UpSetR/README.html)*, *[stringr](https://cran.r-project.org/web/packages/stringr/vignettes/stringr.html)*, *[magick](https://cran.r-project.org/web/packages/magick/vignettes/intro.html)*
+**Packages**: required packages are listed in [environment.yaml](envm/environment.yaml) file.
 
 #### Examples 
 
