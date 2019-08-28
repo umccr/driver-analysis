@@ -25,5 +25,6 @@ dependencies:
         - r-upsetr
         - r-stringr
         - r-magick
+        - bioconductor-iranges
         - bioconductor-maftools
 
