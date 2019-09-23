@@ -5,10 +5,10 @@ Workflow for **selection analysis** and **cancer driver discovery** using the fo
 * **[dndscv](https://github.com/im3sanger/dndscv)** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details)
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480) for details)
 * **[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home)** (see paper by [Mularoni *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details)
-* **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig)** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details, ...*work in progress*)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api)** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details for details, ...*work in progress*)
-* **[CHASMplus](https://github.com/KarchinLab/CHASMplus)** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details, ...*work in progress*)
+* **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig)** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details, ...*work in progress*)
 * **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet)** (see preprint by [Reyna et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details, it is improved version of [HotNet2](https://github.com/raphael-group/hotnet2), ...*work in progress*)
+* **[CHASMplus](https://github.com/KarchinLab/CHASMplus)** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details, ...*work in progress*)
 
 The results from individual tools are **summarised** and **visualised** using *[driverAnalysis.R](./scripts/driverAnalysis.R)* script. 
 
@@ -20,10 +20,10 @@ The results from individual tools are **summarised** and **visualised** using *[
   * [dNdS](#dnds)
   * [OncodriveClust](#oncodriveclust)
   * [OncodriveFML](#oncodrivefml)
-  * [MutSig](#mutsig)
   * [Cancer Genome Interpreter](#cancer-genome-interpreter)
-  * [CHASMplus](#chasmplus)
+  * [MutSig](#mutsig)
   * [Hierarchical HotNet](#hierarchical-hotnet)
+  * [CHASMplus](#chasmplus)
 * [Driver analysis summary](#driver-analysis-summary)
     * [Usage](#usage)
     * [Arguments](#arguments)
@@ -169,14 +169,6 @@ oncodrivefml --input Avner-organoids.maf --elements /g/data3/gx8/extras/jmarzec/
 
 <br>
 
-### MutSig
-
-...work in progress
-
-[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig), see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details.
-
-<br>
-
 ### Cancer Genome Interpreter
 
 ...work in progress
@@ -189,11 +181,11 @@ The CGI resource can also be accessed programmatically by an API created via RES
 
 <br>
 
-### CHASMplus
+### MutSig
 
 ...work in progress
 
-[CHASMplus](https://github.com/KarchinLab/CHASMplus), see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details.
+[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig), see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details.
 
 <br>
 
@@ -202,6 +194,14 @@ The CGI resource can also be accessed programmatically by an API created via RES
 ...work in progress
 
 [Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet), see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details.
+
+<br>
+
+### CHASMplus
+
+...work in progress
+
+[CHASMplus](https://github.com/KarchinLab/CHASMplus), see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details.
 
 <br>
 
