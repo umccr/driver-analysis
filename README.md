@@ -235,27 +235,27 @@ To run the pipeline execure the *[driverAnalysis.R](./scripts/driverAnalysis.R)*
 
 #### Arguments
 
-Argument | Description
------------- | ------------
---maf_dir | Directory with *MAF* file(s)
---maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma
---datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files
---dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `0.1`)
---oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`)
---ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`)
---hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`)
---max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`)
---ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`)
---out_folder | Output folder (defualt is `Driver_analysis_report`)
---genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL)
---genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines
---samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed
---nonSyn_list | List of variant classifications to be considered as non-synonymous (OPTIONAL). Rest will be considered as silent variants. Default uses [Variant Classifications](http://asia.ensembl.org/Help/Glossary?id=535) with `High/Moderate variant consequences`
---oncodrivefml | Name of folder with results files from [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) analysis (OPTIONAL)
---oncodrivefml_p | P-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.1`)
---oncodrivefml_q | Q-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.001`)
---oncodrivefml_conf | Directory and name of [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) configuration file (OPTIONAL)
---remove_duplicated_variants | Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? (OPTIONAL; defulat is `TRUE`). **Note**, option `TRUE` removes all repeated variants as duplicated entries. `FALSE` results in keeping all of them)
+Argument | Description | Required
+------------ | ------------ | ------------
+--maf_dir | Directory with *MAF* file(s) | **Yes**
+--maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma | **Yes**
+--datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files | **Yes**
+--dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `0.1`) | No
+--oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`) | No
+--ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`) | No
+--hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`) | No
+--max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`) | No
+--ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`) | No
+--genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL) | No
+--genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines | No
+--samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed | No
+--nonSyn_list | List of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants. Default uses [Variant Classifications](http://asia.ensembl.org/Help/Glossary?id=535) with `High/Moderate variant consequences` | No
+--oncodrivefml | Name of folder with results files from [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) analysis (OPTIONAL) | No
+--oncodrivefml_p | P-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.1`) | No
+--oncodrivefml_q | Q-value threshold for reporting [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) results (OPTIONAL; defualt is `0.001`) | No
+--oncodrivefml_conf | Directory and name of [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html) configuration file (OPTIONAL) | No
+--remove_duplicated_variants | Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? (defulat is `TRUE`). **Note**, option `TRUE` removes all repeated variants as duplicated entries. `FALSE` results in keeping all of them) | No
+--out_folder | Output folder (defualt is `Driver_analysis_report`) | No
 --hide_code_btn | Hide the *Code* button allowing to show/hide code chunks in the final HTML report. Available options are: `TRUE` (default) and `FALSE` | No
 
 <br />
