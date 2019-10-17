@@ -87,6 +87,8 @@ Download reference data using `BgData` tool
 * precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores (~17Gb)
 
 ```
+cd /g/data3/gx8/extras/jmarzec/apps/oncodrivefml
+
 bg-data get genomicscores/caddpack/1.0
 ```
 
@@ -139,6 +141,12 @@ Section | Parameter | Default value | Description
 
 <br />
 
+###### Note
+
+If the precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores file (~17Gb) was downloaded using `BgData` tool then one can change the `[score]` parameter to the location with`bgdata` folder (`/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/.bgdata/genomicscores/caddpack/1.0.master`on Raijin (see [Reference data](#reference-data) section)
+
+<br />
+
 #### Running the analysis
 
 The analysis are executed using `oncodrivefml` command followed by [paramters](#parameters) of interest, e.g.
@@ -155,7 +163,17 @@ oncodrivefml --input Avner-primary_tissue.maf --elements /g/data3/gx8/extras/jma
 oncodrivefml --input Avner-organoids.maf --elements /g/data3/gx8/extras/jmarzec/apps/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  Avner-organoids_oncodrivefml_analysis
 ```
 
-**Note**, as default a file with coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
+###### Note
+
+As default a file with coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
+
+###### Issues
+
+In case of `ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from compile-time ssl backend (none/other)` error message `pycurl` using `pip` (from `python-sdk` [GitHub issues](https://github.com/transloadit/python-sdk/issues/4#issuecomment-418120668))
+
+```
+pip install pycurl==7.43.0 --global-option=build_ext --global-option="-L/usr/local/opt/openssl/lib" --global-option="-I/usr/local/opt/openssl/include"
+```
 
 <br />
 
@@ -211,7 +229,9 @@ To summarise and visualise results derived using various methods run the *[drive
 
 This script also performs selection analysis and cancer driver discovery using ***[dnds](https://github.com/im3sanger/dndscv)*** (including *dndscv* and *dNdSloc* models, [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346)) and ***[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)*** ([Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480)) methods. The input mutation data is expected to be in [Mutation Annotation Format](https://software.broadinstitute.org/software/igv/MutationAnnotationFormat) (MAF) (see [MAF-summary](https://github.com/umccr/MAF-summary) repo for more detials), which is processed using *[maftools](https://www.bioconductor.org/packages/devel/bioc/vignettes/maftools/inst/doc/maftools.html)* R package ([bioRxiv](http://dx.doi.org/10.1101/052662), [GitHub](https://github.com/PoisonAlien/maftools)).
 
-NOTE: Only non-synonymous variants with high/moderate variant consequences, including *frame shift deletions*, *frame shift insertions*, *splice site mutations*, *translation start site mutations* ,*nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*, are reported (silent variants are ignored). One can manually define variant classifications to be considered as non-synonymous using `--nonSyn_list` parameter.
+###### Note
+
+Only non-synonymous variants with high/moderate variant consequences, including *frame shift deletions*, *frame shift insertions*, *splice site mutations*, *translation start site mutations* ,*nonsense mutation*, *nonstop mutations*, *in-frame deletion*, *in-frame insertions* and *missense mutation*, are reported (silent variants are ignored). One can manually define variant classifications to be considered as non-synonymous using `--nonSyn_list` parameter.
 
 While *dN/dS* and *OncodriveClust* methods use *[maftools](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html)* object limited to non-synonymous variants ***OncodriveFML*** algorithm is able to analyse the pattern of somatic mutations across tumours in both **coding** and **non-coding** genomic regions to identify signals of positive selection. For that reason, certain information (e.g. in *Mutation maps* section) about variants not classified as non-synonymous will not be available in the summary report.
 
