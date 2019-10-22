@@ -29,4 +29,6 @@ dependencies:
         - r-devtools
         - bioconductor-iranges
         - bioconductor-maftools
+        - python-dateutil
+        - pycurl
 
