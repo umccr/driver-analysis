@@ -16,6 +16,7 @@ The results from individual tools are **summarised** and **visualised** using *[
 ## Table of contents
 
 <!-- vim-markdown-toc GFM -->
+* [Installation](#installation)
 * [Driver analysis tools](#driver-analysis-tools)
   * [dNdS](#dnds)
   * [OncodriveClust](#oncodriveclust)
@@ -30,7 +31,26 @@ The results from individual tools are **summarised** and **visualised** using *[
     * [Examples](#examples)
 
 <!-- vim-markdown-toc -->
+
 <br>
+
+### Installation
+
+To summarise results from the individual [driver analysis tools](#driver-analysis-tools) run [Driver analysis summary](#driver-analysis-summary) R script. In order to create *conda* environment and install required packages run the [environment.yaml](envm/environment.yaml) file. The `-p` flag should point to the *miniconda* installation path. For instance, to create `driver-analysis` environment using *miniconda* installed in `/miniconda` directory run the following command:
+
+```
+conda env create -p /miniconda/envs/driver-analysis --file envm/environment.yaml
+```
+
+Activate created `driver-analysis` *conda* environment before running the pipeline
+
+```
+conda activate driver-analysis
+```
+
+###### Note
+
+[OncodriveFML](#oncodrivefml) has to be installed separately. The instruction for installing this tool is provided [hehe](#oncodrivefml).
 
 ## Driver analysis tools
 
@@ -52,19 +72,17 @@ The **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/
 
 #### Installation
 
-To install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) follow the [steps](https://bitbucket.org/bbglab/oncodrivefml/src/master/) below
+To install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) follow the [steps](https://bitbucket.org/bbglab/oncodrivefml/src/master/) below. Preferably, install [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) within `driver-analysis` Conda environment.
 
 ```
-pip install python-dateutil
-
-module load python-dateutil
-
 pip install oncodrivefml
 ```
 
 <br /> 
 
 #### Data download
+
+The [scores and reference data](#reference-data) will be automatically downloaded the first time  *[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml/src/master/)* is run, but to speed up the process it is better to first download it using `BgData` package management tool that is installed together with *OncodriveFML*.
 
 ##### Example data
 
@@ -84,24 +102,40 @@ tar -xvzf oncodrivefml-examples_v2.2.tar.gz
 
 Download reference data using `BgData` tool
 
+###### Note
+
+As default `bgdata` downloads the data to home directory (`~/.bgdata`). Change this directory in case the space on home directory is limited (see [bgdata docs](https://bgdata.readthedocs.io/en/latest/configuration.html) for more details).
+
+`vim ~/.config/bbglab/bgdatav2.conf`
+
+and change  `local_repository = "~/.bgdata"` to `"/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/.bgdata"`
+
 * precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores (~17Gb)
 
 ```
-cd /g/data3/gx8/extras/jmarzec/apps/oncodrivefml
-
-bg-data get genomicscores/caddpack/1.0
+bgdata get genomicscores/caddpack/1.0
 ```
 
 * genome reference (3Gb)
 
 ```
-bg-data get datasets/genomereference/hg19
+bgdata get datasets/genomereference/hg19
 ```
 
 * gene stops (16Mb) (not required)
 ```
-bg-data get datasets/genestops/hg19
+bgdata get datasets/genestops/hg19
 ```
+
+###### Note
+
+* If the reference data is located in directory other than home directory (e.i. `~/.bgdata`) then one needs to specify the location of the `scores file` in `~/.config/bbglab/oncodrivefml_v2.conf` (see [Configuration file](#configuration-file) section)
+
+`vim ~/.config/bbglab/oncodrivefml_v2.conf`
+
+and change `file = "%(bgdata://genomicscores/caddpack/1.0)"` to `"/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/.bgdata/genomicscores/caddpack/1.0-20170217"`
+
+* Additionally, it may be necessary to run oncodrivefml with the default `file = '%(bgdata://genomicscores/caddpack/1.0)'` for the **first time** since this triggers some changes in the background that enable the tool to search for reference files in directory other than home directory (e.i. `~/.bgdata`)
 
 <br /> 
 
@@ -143,33 +177,35 @@ Section | Parameter | Default value | Description
 
 ###### Note
 
-If the precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores file (~17Gb) was downloaded using `BgData` tool then one can change the `[score]` parameter to the location with`bgdata` folder (`/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/.bgdata/genomicscores/caddpack/1.0.master`on Raijin (see [Reference data](#reference-data) section)
+If the precomputed Combined Annotation Dependent Depletion ([CADD](https://cadd.gs.washington.edu/info)) scores file (~17Gb) was downloaded using `BgData` tool then one can change the `[score]` parameter to the location with`bgdata` folder (`"/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/.bgdata/genomicscores/caddpack/1.0-20170217"`on Raijin (see [Reference data](#reference-data) section)
 
 <br />
 
 #### Running the analysis
 
+Conda `driver-summary` (see [driver analysis installation](https://github.com/umccr/driver-analysis#installation) section) needs to be activated frist.
+
 The analysis are executed using `oncodrivefml` command followed by [paramters](#parameters) of interest, e.g.
 
 ```
-data=/g/data3/gx8/projects/Jacek_Cohort-analyses/mutation/projects/Avner_organoid_bank
+conda activate driver-analysis
+
+data="examples"
 
 cd $data
 
-# Run OncodriveFML using MAF from Avner primary tissue samples
-oncodrivefml --input Avner-primary_tissue.maf --elements /g/data3/gx8/extras/jmarzec/apps/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  Avner-primary_tissue_oncodrivefml_analysis
+# Run OncodriveFML using MAF from ICGC PACA-AU samples
+oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements /path/to/oncodrivefml/example/data/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-AU_oncodrivefml_analysis
 
-# Run OncodriveFML using MAF from Avner organoid samples
-oncodrivefml --input Avner-organoids.maf --elements /g/data3/gx8/extras/jmarzec/apps/oncodrivefml/example/cds.tsv.gz --sequencing wgs --output  Avner-organoids_oncodrivefml_analysis
+# Run OncodriveFML using MAF from ICGC PACA-CA samples
+oncodrivefml --input simple_somatic_mutation.open.PACA-CA.maf --elements /g/data3/gx8/extras/jmarzec/apps//path/to/oncodrivefml/example/data/example/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-CA_oncodrivefml_analysis
 ```
 
 ###### Note
 
-As default a file with coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
+* As default a file with coding sequence [regions](https://oncodrivefml.readthedocs.io/en/latest/files.html#regions-file-format) (CDS) downloaded from [OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) website is used.
 
-###### Issues
-
-In case of `ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from compile-time ssl backend (none/other)` error message `pycurl` using `pip` (from `python-sdk` [GitHub issues](https://github.com/transloadit/python-sdk/issues/4#issuecomment-418120668))
+* In case of `ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from compile-time ssl backend (none/other)` error message install `pycurl` using `pip` (from `python-sdk` [GitHub issues](https://github.com/transloadit/python-sdk/issues/4#issuecomment-418120668))
 
 ```
 pip install pycurl==7.43.0 --global-option=build_ext --global-option="-L/usr/local/opt/openssl/lib" --global-option="-I/usr/local/opt/openssl/include"
@@ -179,7 +215,7 @@ pip install pycurl==7.43.0 --global-option=build_ext --global-option="-L/usr/loc
 
 #### Output
 
-[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) generates 3 output files with the same name but different extension. The name given to the files is the same as the name of the mutations file (*Avner-primary_tissue.maf* and *Avner-organoids.maf* in the [example](#running-the-analysis) above) followed by `-oncodrivefml` and the extension:
+[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) generates 3 output files with the same name but different extension. The name given to the files is the same as the name of the mutations file (*simple_somatic_mutation.open.PACA-AU.maf* and *simple_somatic_mutation.open.PACA-CA.maf* in the [example](#running-the-analysis) above) followed by `-oncodrivefml` and the extension:
 
 * `.tsv` - tabulated file with the analysis results
 * `.png` - an image with the most significant genes labeled
@@ -235,19 +271,6 @@ Only non-synonymous variants with high/moderate variant consequences, including 
 
 While *dN/dS* and *OncodriveClust* methods use *[maftools](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html)* object limited to non-synonymous variants ***OncodriveFML*** algorithm is able to analyse the pattern of somatic mutations across tumours in both **coding** and **non-coding** genomic regions to identify signals of positive selection. For that reason, certain information (e.g. in *Mutation maps* section) about variants not classified as non-synonymous will not be available in the summary report.
 
-### Installation
-
-Run the [environment.yaml](envm/environment.yaml) file to create *conda* environment and install required packages. The `-p` flag should point to the *miniconda* installation path. For instance, to create `driver-analysis` environment using *miniconda* installed in `/miniconda` directory run the following command:
-
-```
-conda env create -p /miniconda/envs/driver-analysis --file envm/environment.yaml
-```
-
-Activate created `driver-analysis` *conda* environment before running the pipeline
-
-```
-conda activate driver-analysis
-```
 
 ### Usage
 
@@ -284,16 +307,22 @@ Argument | Description | Required
 
 #### Examples 
 
+Conda `driver-summary` (see [driver analysis installation](https://github.com/umccr/driver-analysis#installation) section) needs to be activated first.
+
 Below are command line use examples for generating *Driver Analyses Summary* report using:
 
 ```
-oncodrivefml_conf=/g/data3/gx8/extras/jmarzec/apps/oncodrivefml/example/oncodrivefml_v2.conf
+conda activate driver-analysis
+
+oncodrivefml_conf=~/.config/bbglab/oncodrivefml_v2.conf
+
+data="examples"
 
 cd scripts
 
-Rscript driverAnalysis.R --maf_dir $data --maf_files Avner-primary_tissue.maf,Avner-organoids.maf --datasets Primary_tissue,Organoid --dnds_q 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 200 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --oncodrivefml $data/Avner-primary_tissue_oncodrivefml_analysis/Avner-primary_tissue-oncodrivefml,$data/Avner-organoids_oncodrivefml_analysis/Avner-organoids-oncodrivefml --oncodrivefml_conf $oncodrivefml_conf --out_folder Avner_driver_analysis_report
+Rscript driverAnalysis.R --maf_dir $data --maf_files simple_somatic_mutation.open.PACA-AU.maf,simple_somatic_mutation.open.PACA-CA.maf --datasets ICGG_PACA-AU,ICGG_PACA-CA --dnds_q 0.1 --ratios_ci FALSE --hypermut_sample_cutoff 200 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --oncodrivefml $data/ICGG_PACA-AU_oncodrivefml_analysis/simple_somatic_mutation.open.PACA-AU-oncodrivefml,$data/ICGG_PACA-CA_oncodrivefml_analysis/simple_somatic_mutation.open.PACA-AU-oncodrivefml --oncodrivefml_conf $oncodrivefml_conf --out_folder ICGC_PACA_analysis_report
 ```
 
 <br />
 
-This will generate *Avner_driver_analysis_report.html* report with summary tables and plots within `Avner_driver_analysis_report` folder, as well as `results` folder with intermediate files, including plots and tables that are presented in the report.
+This will generate *ICGC_PACA_analysis_report.html* report with summary tables and plots within `ICGC_PACA_analysis_report_report` folder, as well as `results` folder with intermediate files, including plots and tables that are presented in the report.
