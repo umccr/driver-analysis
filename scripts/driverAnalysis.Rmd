@@ -16,21 +16,22 @@ params:
   maf_files: 
   samples_id_cols: 
   datasets: 
-  dnds_q: 
-  oncodriveclust_fdr: 
-  ratios_ci: 
-  hypermut_sample_cutoff: 
-  max_muts_per_gene: 
-  ucsc_genome_assembly: 
-  genes_list: 
-  genes_blacklist: 
-  samples_blacklist: 
-  nonSyn_list: 
-  oncodrivefml: 
-  oncodrivefml_p: 
-  oncodrivefml_q: 
-  oncodrivefml_conf: 
-  remove_duplicated_variants: 
+  dnds_q: 0.1
+  oncodriveclust_fdr: 0.5
+  ratios_ci: FALSE
+  hypermut_sample_cutoff: 250
+  max_muts_per_gene: 2
+  ucsc_genome_assembly: 19
+  genes_list: 'none'
+  genes_blacklist: 'none'
+  samples_blacklist: 'none'
+  nonSyn_list: 'Frame_Shift_Del,Frame_Shift_Ins,Splice_Site,Translation_Start_Site,Nonsense_Mutation,Nonstop_Mutation,In_Frame_Del,In_Frame_Ins,Missense_Mutation'
+  oncodrivefml: '/Users/jmarzec/data/Cohort_analyses/mutation/projects/Hartwig_PC/Hartwig_PDAC_oncodrivefml_analysis/Hartwig_PDAC-oncodrivefml,/Users/jmarzec/data/Cohort_analyses/mutation/projects/Hartwig_PC/Hartwig_PNET_oncodrivefml_analysis/Hartwig_PNET-oncodrivefml'
+  oncodrivefml_p: 0.01
+  oncodrivefml_q: 0.1
+  oncodrivefml_conf: 'none'
+  clinical_info: 'none'
+  remove_duplicated_variants: TRUE
   hide_code_btn: TRUE
   out_folder: 'Driver_analysis_report'
 ---
@@ -41,12 +42,9 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details, ...work in progress)
-* **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig){target="_blank"}** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567){target="_blank"} for details, ...work in progress)
-* **[CHASMplus](https://github.com/KarchinLab/CHASMplus){target="_blank"}** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4){target="_blank"} for details, ...work in progress)
-* **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"}** (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details, ...work in progress)
 
 ```{r code_display, echo = FALSE}
-##### Include or exclude the "Code" buttom allowing to "show"/"hide" code chunks from the report 
+##### Include or exclude the "Code" buttom allowing to "show"/"hide" code chunks from the report
 if ( params$hide_code_btn ) {
   writeLines(".btn { display: none ;", con = "driverAnalysis.css")
 } else {
@@ -64,25 +62,36 @@ if ( params$hide_code_btn ) {
 verify_genes <- function(genes) {
   
   genes.verified = unique(str_replace(string = genes, pattern = "\\..*", replacement = ""))
-  
   return( genes.verified )
 }
 
 ##### Perfrom oncodrive analysis. Clusters variants based on their position to detect disease causing genes
-oncodrive.mod <- function(mafInfo, dataset, AACol, gl) {
-
-  ##### Check whether it's possible to run oncodrive analysis for given dataset by calculating cluster scores
-  nonsyn.scores <- parse_prot(mafInfo, AACol = AACol, gl = gl, m = 5, calBg = FALSE, nBg = 100)
-    
-  if ( !is.null(nonsyn.scores) ) {
+oncodrive_analysis <- function(mafInfo, dataset, gl) {
+  
+  ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable. NOTE: other possibilities are: "Protein_Change", "AAChange""
+  pchange = c('HGVSp_Short', 'Protein_Change', 'AAChange')
       
-    ##### Cluster variants based on their position to detect disease causing genes
-    sig = oncodrive(maf = mafInfo, AACol = AACol, minMut = 5, pvalMethod = 'zscore')
-    
-    oncodrive.plot <- plotOncodrive(res = sig, fdrCutOff = 0.05, useFraction = FALSE)
+  ##### Define the column with protein change info
+  pchange = pchange[pchange %in% colnames(mafInfo@data)]
+  
+  ##### Check if the protein change field is not empty
+  if ( any(!is.na(as.data.frame(mafInfo@data)[ , pchange  ]))  ) {
+        
+    ##### Check whether it's possible to run oncodrive analysis for given dataset by calculating cluster scores
+    nonsyn.scores <- parse_prot(mafInfo, AACol = pchange, gl = gl, m = 5, calBg = FALSE, nBg = 100)
       
-    return(list(sig, oncodrive.plot))
+    if ( !is.null(nonsyn.scores) ) {
+        
+      ##### Cluster variants based on their position to detect disease causing genes
+      sig = oncodrive(maf = mafInfo, AACol = pchange, minMut = 5, pvalMethod = 'zscore')
+      
+      oncodrive.plot <- plotOncodrive(res = sig, fdrCutOff = 0.05, useFraction = FALSE)
+    }
+  } else {
+    sig <- NULL
+    oncodrive.plot <- NULL
   }
+  return(list(sig, oncodrive.plot))
 }
 
 ##### Functon to calcluate cluster score (from https://rdrr.io/github/PoisonAlien/maftools/src/R/clusterScore.R). It's required in order check whether it's possible to run oncodrive analysis for given dataset
@@ -285,73 +294,56 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
   ##### Create a list to store MAF info for individual datasets
   for ( dataset in datasets ) {
     
+    mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = TRUE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
+    
     ##### Check if the gene has any mutations in correspoding dataset
-    if ( nrow(subsetMaf(maf = mafInfo[[dataset]], includeSyn = TRUE, genes = gene, 
-        query = "Variant_Type != 'CNV'")) != 0 ) {
+    if ( nrow(mut) != 0 ) {
       
       ##### Drawing lollipop for the top 10 genes in each dataset
       ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable. NOTE: other possibilities are: "Protein_Change", "AAChange""
-       if ( "HGVSp_Short" %in% maftools::getFields(mafInfo[[dataset]]) && gene %in% mafInfo[[dataset]]@data$Hugo_Symbol ) {
+      pchange = c('HGVSp_Short', 'Protein_Change', 'AAChange')
+      
+      ##### Define the column with protein change info
+      pchange = pchange[pchange %in% colnames(mut)]
+      
+      ##### Check if the protein change field is not empty
+      if ( any(!is.na(as.data.frame(mut)[ , pchange  ]))  ) {
         
         cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
         
         ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
-        pdf(file="/dev/null")
-        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = "HGVSp_Short", printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE, fn = paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"))))
+        pdf(file=paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf"), width = 8, height = 5)
+        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = pchange, printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE))
         invisible(dev.off())
         
         ##### Export pdf to png
         lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
         image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
         
-        ##### Read in the oncoplots PNG files
+        ##### Read in the PNG files
         cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
         cat("<br/><br/><br/>")
         
         ##### Remove redundant pdf plot
         file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
     
-      } else if ( "aa_mutation" %in% maftools::getFields(mafInfo[[dataset]]) && gene %in% mafInfo[[dataset]]@data$Hugo_Symbo ) {
-        
-        cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-        
-        ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
-        pdf(file="/dev/null")
-        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = "aa_mutation", printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE, fn = paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"))))
-        invisible(dev.off())
-        
-        ##### Export pdf to png
-        lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
-        image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
-        
-        ##### Read in the oncoplots PNG files
-        cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
-        cat("<br/><br/><br/>")
-        
-        ##### Remove redundant pdf plot
-        file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
-      
       ##### ...otherwise leave a message
       } else {
         
         ##### Check if the genes has any synonymous vatiants
-        if ( "HGVSp_Short" %in% names(mafInfo[[dataset]]@maf.silent) && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol  ) {
+        if ( length(pchange[pchange %in% colnames(mafInfo[[dataset]]@maf.silent)]) > 0 && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol && any(!is.na(as.data.frame(mafInfo[[dataset]]@maf.silent)[ , pchange  ])) ) {
         
-          cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n\n\n", sep=" "))
-      
-        } else if ( "aa_mutation" %in% names(mafInfo[[dataset]]@maf.silent) && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol  ) {
-          
-          cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n\n\n", sep=" "))
+          cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n", sep=" "))
       
         } else {
-          cat(paste("This section was skipped for dataset", dataset, "since the corresponding MAF does not contain field with amino acid changes details!\n\n\n\n", sep=" "))
+          cat(paste("This section was skipped for dataset", dataset, "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
         }
       }
         
-      } else {
+    } else {
         
       cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n\n\n", sep=" "))
+      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
     }
   }
 }
@@ -384,7 +376,6 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
         mut.details.genes <- mafInfo[[datasets[i]]]@data[ mafInfo[[datasets[i]]]@data[, Hugo_Symbol] %in% genes, ]
     }
     
-    
     if ( nrow(mut.details.genes) != 0 ) {
       
       ##### Sort table by gene symbol and then by sample ID
@@ -397,7 +388,7 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
       col_idx <- grep("Hugo_Symbol", names(mut.details.genes))
       mut.details.genes <- as.data.frame(mut.details.genes)[, c(col_idx, (1:ncol(mut.details.genes))[-col_idx]) ]
       
-      widges.list[[i]] <- DT::datatable( data = mut.details.genes, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+      widges.list[[i]] <- DT::datatable( data = mut.details.genes, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(mut.details.genes), 'text-align' = 'center' )
       
     } else {
@@ -407,12 +398,75 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
   
   ##### Report datasets with no mutations reported in selected genes
   if ( length(datasets.noMut) != 0 ) {
-    
-    cat(paste("Note, queried gene(s) have no non-synonymous variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n\n\n", sep=" "))
+    if ( type == "nonsynonymous" ) {
+      cat(paste("Note, none of queried gene(s) have non-synonymous variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n", sep=" "))
+    } else if ( type == "silent" ) {
+      cat(paste("Note, none of queried gene(s) have silent variants reported in the following dataset(s):", paste(datasets.noMut, collapse = ", "), "\n\n", sep=" "))
+    }
   }
   
   ##### Print a list of htmlwidgets
   widges.list
+}
+
+###### Generate lollipop plot for each dataset for selected gene
+lollipops.datasets <- function(mafInfo, datasets, gene) {
+  
+  ##### Create a list to store MAF info for individual datasets
+  for ( dataset in datasets ) {
+    
+    mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = TRUE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
+    
+    ##### Check if the gene has any mutations in correspoding dataset
+    if ( nrow(mut) != 0 ) {
+      
+      ##### Drawing lollipop for the top 10 genes in each dataset
+      ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable. NOTE: other possibilities are: "Protein_Change", "AAChange""
+      pchange = c('HGVSp_Short', 'Protein_Change', 'AAChange')
+      
+      ##### Define the column with protein change info
+      pchange = pchange[pchange %in% colnames(mut)]
+      
+      ##### Check if the protein change field is not empty
+      if ( any(!is.na(as.data.frame(mut)[ , pchange  ]))  ) {
+        
+        cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
+        
+        ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
+        pdf(file=paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf"), width = 8, height = 5)
+        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = pchange, printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE))
+        invisible(dev.off())
+        
+        ##### Export pdf to png
+        lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
+        image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
+        
+        ##### Read in the PNG files
+        cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
+        cat("<br/><br/><br/>")
+        
+        ##### Remove redundant pdf plot
+        file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
+    
+      ##### ...otherwise leave a message
+      } else {
+        
+        ##### Check if the genes has any synonymous vatiants
+        if ( length(pchange[pchange %in% colnames(mafInfo[[dataset]]@maf.silent)]) > 0 && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol && any(!is.na(as.data.frame(mafInfo[[dataset]]@maf.silent)[ , pchange  ])) ) {
+        
+          cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n", sep=" "))
+      
+        } else {
+          cat(paste("This section was skipped for dataset", dataset, "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+        }
+      }
+        
+    } else {
+        
+      cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
+      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
+    }
+  }
 }
 
 ##### A wrapper to saveWidget which compensates for arguable BUG in saveWidget which requires `file` to be in current working directory (see post https://github.com/ramnathv/htmlwidgets/issues/299 )
@@ -451,28 +505,49 @@ datasets.list <- unlist(strsplit(params$datasets, split=',', fixed=TRUE))
 mafInfo <- vector("list", length(mafFiles))
 names(mafInfo) <- datasets.list
 
+##### Check if file with clinical information is provided
+clinicalInfo <- vector("list", length(mafFiles))
+names(clinicalInfo) <- datasets.list
+
+if ( params$clinical_info != "none" ){
+  
+  clinicalFiles <- unlist(strsplit(params$clinical_info, split=',', fixed=TRUE))
+  
+  for ( i in 1:length(mafFiles) ) {
+    clinicalInfo[[i]] <- read.table(clinicalFiles[[i]], sep="\t", as.is=TRUE, header=TRUE, row.names=NULL, quote = "")
+  }
+} else {
+  for ( i in 1:length(mafFiles) ) {
+    clinicalInfo[[i]] <- NA
+  }
+} 
+
 ##### NOTE: maftools by default summarises only non-synonymous variants with high/moderate variant consequences and ignores silent variants (https://github.com/PoisonAlien/maftools/issues/63), which are stored in "maf.silent" slot of the class MAF object (mafInfo[[i]]@maf.silent)
 for ( i in 1:length(mafFiles) ) {
-  mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+  
+  ##### Add clinical information if provided
+  if ( !is.na(clinicalInfo[[i]]) ){
+    mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE, clinicalData = clinicalInfo[[i]])
+  } else {
+    mafInfo[[i]] <- maftools::read.maf(maf = mafFiles[i], vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE, clinicalData = NULL)
+  }
 }
 
 ##### Read in list of genes of interest of specified
-if ( !is.na(params$genes_list) ){
-  
+if ( params$genes_list != "none" ){
   goi <- unique(read.table(params$genes_list, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL)[,1])
 }
 
 ##### Create directory for output files
 outDir <- paste(params$maf_dir, params$out_folder, "results", sep = "/")
 if ( !file.exists(params$out_folder) ){
-
   dir.create(outDir, recursive=TRUE)
 }
 
 ##### Read in OncodriveFML analysis results (https://oncodrivefml.readthedocs.io/en/latest/output.html)
 runOncodrivefmlChunk <- FALSE
 
-if ( any(!is.na(params$oncodrivefml)) ){
+if ( params$oncodrivefml != "none" ){
   
   oncodriveFML.res <- unlist(strsplit(params$oncodrivefml, split=',', fixed=TRUE))
   
@@ -493,19 +568,16 @@ if ( any(!is.na(params$oncodrivefml)) ){
     }
   }
   runOncodrivefmlChunk <- TRUE
-  
 }
 
 ##### Read in OncodriveFML configuration file (https://oncodrivefml.readthedocs.io/en/latest/output.html)
 oncodrivefml.conf <- NULL
 
-if ( !is.na(params$oncodrivefml_conf) ){
+if ( params$oncodrivefml_conf != "none" ){
   
   ##### Read in the results table
   if ( file.exists(paste0(oncodriveFML.res[i], ".tsv")) ) {
-      
     oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="")
-      
   }
 }
 
@@ -530,8 +602,7 @@ names(signif_genes.methods) <- methods
 
 ```{r exclude_samples, comment = NA, message=FALSE, warning=FALSE}
 ##### Exclude user-derined samples(s) from the analysis
-if ( !is.na(params$samples_blacklist) ) {
-    
+if ( params$samples_blacklist != "none" ) {
   for ( i in 1:length(mafFiles) ) {
       
     ##### Read in list of samples to be excluded
@@ -545,15 +616,14 @@ if ( !is.na(params$samples_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = as.vector(samples2keep), genes = NULL, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE, dropLevels=TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 }
 ```
 
 ```{r exclude_genes, comment = NA, message=FALSE, warning=FALSE}
 ##### Exclude user-derined gene(s) from the analysis
-if ( !is.na(params$genes_blacklist) ) {
-    
+if ( params$genes_blacklist != "none" ) {
   for ( i in 1:length(mafFiles) ) {
     
     ##### Read in list of genes to be excluded
@@ -566,10 +636,9 @@ if ( !is.na(params$genes_blacklist) ) {
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = NULL, genes = genes2keep, fields = NULL, query = NULL, mafObj = FALSE, includeSyn = TRUE)
     
     ##### Now read the data subset as a maf object
-    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = params$nonSyn_list, removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+    mafInfo[[i]] <- maftools::read.maf(maf = mafInfo[[i]], vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
   }
 } else {
-  
   genes2keep <- mafInfo[[i]]@gene.summary$Hugo_Symbol
 }
 ```
@@ -636,7 +705,7 @@ names(ci) <- datasets.list
 for ( i in 1:length(mafFiles) ) {
   
   ##### Run analysis for selected genes
-  if ( !is.na(params$genes_list) ){
+  if ( params$genes_list != "none" ){
     
     ##### First, check if all genes are in the RefCDS transcripts object
     RefCDSgenes <- goi[ goi %in% sapply(RefCDS, function(x) x$gene_name) ]
@@ -717,21 +786,16 @@ for ( i in 1:length(mafFiles) ) {
     
     exclsamples[[i]] <- as.data.frame(dndsout[[i]]$exclsamples)
     names(exclsamples[[i]]) <- "sampleID"
-      
   } else {
-    
     exclsamples[[i]] <- data.frame(matrix(ncol = 1, nrow = 0))
     names(exclsamples[[i]]) <- "sampleID"
   }
   
   ##### Record excluded mutations (mutations when encountering too many mutations per gene in the same sample)
   if (!is.null(dndsout[[i]]$exclmuts)) {
-    
     exclmuts[[i]] <- dndsout[[i]]$exclmuts
     exclmuts[[i]] <- exclmuts[[i]][, c("gene", "sampleID", "chr", "pos", "ref", "mut", "geneind")]
-  
     } else {
-    
     exclmuts[[i]] <- data.frame(matrix(ncol = 9, nrow = 0))
     names(exclmuts[[i]]) <- c("gene", "sampleID", "chr", "pos", "ref", "mut", "geneind")
   }
@@ -759,9 +823,7 @@ for ( i in 1:length(mafFiles) ) {
 mafInfo.all <- mafInfo
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( nrow(exclsamples[[i]]) > 0 ) {
-    
     sample2keep <- unique( mafInfo[[i]]@data$Tumor_Sample_Barcode)[ unique( mafInfo[[i]]@data$Tumor_Sample_Barcode) %!in% exclsamples[[i]]$sampleID ]
       
     ##### Extract required data from MAF
@@ -785,31 +847,26 @@ names(signif_genes.methods$OncodriveCLUST) <- datasets.list
 ###### Generate separate plot for each dataset
 for ( i in 1:length(mafFiles) ) {
   
-  ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable.
-  if ( "HGVSp_Short" %in% maftools::getFields(mafInfo[[i]]) ) {
-          
-    oncodriveClust.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "HGVSp_Short", gl) 
+  oncodriveClust.res[[datasets.list[i]]] <- oncodrive_analysis(mafInfo[[i]], datasets.list[i], gl) 
 
-  } else if ( "aa_mutation" %in% maftools::getFields(mafInfo[[i]]) ) {
+  if ( !is.null(oncodriveClust.res[[datasets.list[i]]][[1]]) && !is.null(oncodriveClust.res[[datasets.list[i]]][[2]]) ) {
+    ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
+    oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
     
-    oncodriveClust.res[[datasets.list[i]]] <- oncodrive.mod(mafInfo[[i]], datasets.list[i], AACol = "aa_mutation", gl)
+    ##### Record sinigficant driver genes for each dataset and method
+    signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
+    signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
+    
+    signif_genes_table.datasets[[i]]$OncodriveCLUST <- oncodriveClust.res[[datasets.list[i]]][[1]][ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr, ]
+    rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
+    
+    ##### Organise the table of significant genes
+    signif_genes_table.datasets[[i]]$OncodriveCLUST <- signif_genes_table.datasets[[i]]$OncodriveCLUST[ , c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")]
     
   } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n\n\n", sep=" "))
+    signif_genes.datasets[[i]]$OncodriveCLUST <- character()
+    signif_genes.methods$OncodriveCLUST[[i]] <- character()
   }
-  
-  ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
-  oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
-  
-  ##### Record sinigficant driver genes for each dataset and method
-  signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
-  signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
-  
-  signif_genes_table.datasets[[i]]$OncodriveCLUST <- oncodriveClust.res[[datasets.list[i]]][[1]][ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr, ]
-  rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
-  
-  ##### Organise the table of significant genes
-  signif_genes_table.datasets[[i]]$OncodriveCLUST <- signif_genes_table.datasets[[i]]$OncodriveCLUST[ , c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")]
 }
 ```
 
@@ -844,7 +901,7 @@ for ( i in 1:length(mafFiles) ) {
   rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
   
   ##### Record sinigficant driver genes for each dataset and method
-  signif_genes.methods$OncodriveFML[[i]] <- signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL
+  signif_genes.methods$OncodriveFML[[i]] <- as.vector(signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL)
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
@@ -875,13 +932,10 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Check which genes were detected by individual method
     for( gene in signif_genes[[i]] ) {
-      
       for ( j in 1:length(signif_genes.datasets[[i]]) ) {
-        
         if ( gene %in% verify_genes(signif_genes.datasets[[i]][[j]]) ) {
           
           signif_genes.upset[[i]][ names(signif_genes.datasets[[i]][j]) , gene] <- 1
-          
         } else {
           signif_genes.upset[[i]][ names(signif_genes.datasets[[i]][j]) , gene] <- 0
         }
@@ -942,7 +996,7 @@ cat("\n\n\n")
 
 #### Samples with non-synonymous variant(s)
 
-Table(s) summarising samples in individual datasets. Each table contains per-sample information (rows) about *number of different types of mutations* (columns), as well as the *total number of mutations* reported in corresponding MAF file. Note, only **samples with detected non-synonymous variant(s)** are reported in the table below.
+Table(s) summarising samples in individual datasets. Each table contains per-sample information (rows) about *number of different types of mutations* (columns), as well as the *total number of mutations* reported in corresponding MAF file. <span style="color:#ff0000">NOTE</span>, only **samples with detected non-synonymous variant(s)** are reported in the table below.
 
 ```{r sample_summary, comment = NA, warning=FALSE}
 ##### Present a sample table in the html report
@@ -961,50 +1015,43 @@ widges.list
 widges.list <- htmltools::tagList()
 ```
 
-***
+`r if ( !is.null(MAF_samples.silent.df) ) { c("***") }`
 
-#### Samples with no non-synonymous variants
+`r if ( !is.null(MAF_samples.silent.df) ) { c("##### Samples with no non-synonymous variants") }`
 
-Table listing sample(s) in which **no non-synonymous variants** were detected and hence will not be included in the summary tables/plots.
+`r if ( !is.null(MAF_samples.silent.df) ) { c("The table below lists sample(s) in which **no non-synonymous variants** were detected and hence will not be included in the summary tables/plots.") }`
 
 ```{r sample_no_nonsynonymous, comment = NA, warning=FALSE}
 ##### report samples with no non-synonymous variants according to corresponding MAF file
 if ( !is.null(MAF_samples.silent.df) ) {
-
   DT::datatable( data = MAF_samples.silent.df, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong("Samples with no non-synonymours variants detected")), filter = "top", extensions = 'Buttons', options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy')) ) %>%
         DT::formatStyle( columns = names(MAF_samples.silent.df), 'text-align' = 'center' )
-  
-} else {
-  cat("Non-synonymous variants were detected in all samples.\n\n\n")
 }
 
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
 
-***
+`r if ( params$samples_blacklist != "none" ) { c("***") }`
 
-#### Excluded samples
+`r if ( params$samples_blacklist != "none" ) { c("##### Excluded samples") }`
 
-List of samples excluded from the analysis.
+`r if ( params$samples_blacklist != "none" ) { c("List of samples excluded from the analysis.") }`
 
 ```{r excluded_samples_table, comment = NA, message=FALSE, warning=FALSE}
 ##### Present a samples table in the html report
-if ( !is.na(params$samples_blacklist) ) {
+if ( params$samples_blacklist != "none" ) {
     
   DT::datatable(data = exclsamples.df, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(exclsamples.df), 'text-align' = 'center' )
-  
-} else {
-  cat("No samples were excluded.\n\n\n")
 }
 ```
 
-***
+`r if ( length(unlist(exclsamples)) > 0 ) { c("***") }`
 
-#### Hypermutator samples
+`r if ( length(unlist(exclsamples)) > 0 ) { c("#### Hypermutator samples") }`
 
-Table(s) listing sample(s) with > `r params$hypermut_sample_cutoff` coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.
+`r if ( length(unlist(exclsamples)) > 0 ) { c(paste0("Table(s) listing sample(s) with >",  params$hypermut_sample_cutoff, " coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.")) }`
 
 ```{r hypermutator_samples, comment = NA, message=FALSE, warning=FALSE}
 ##### Present results summary table in the html report
@@ -1022,6 +1069,29 @@ widges.list
 
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
+```
+
+`r if ( params$clinical_info != "none" ) { c("***") }`
+
+`r if ( params$clinical_info != "none" ) { c("### Samples annotation") }`
+
+`r if ( params$clinical_info != "none" ) { c("Sample annotations for individual dataset(s).") }`
+
+```{r samples_annot_table, comment = NA, message=FALSE, warning=FALSE}
+##### Present a samples table in the html report
+if ( params$clinical_info != "none" ) {
+  
+  ##### Create a list for htmlwidgets
+  widges.list <- htmltools::tagList()
+
+  for ( i in 1:length(mafFiles) ) {
+    widges.list[[i]] <- DT::datatable( data = mafInfo[[i]]@clinical.data, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+      DT::formatStyle( columns = names(clinicalInfo[[i]]), 'text-align' = 'center' )
+  }
+  
+  ##### Print a list of htmlwidgets
+  widges.list
+}
 ```
 
 ***
@@ -1046,21 +1116,18 @@ for ( i in 1:length(mafFiles) ) {
 widges.list
 ```
 
-***
+`r if ( params$genes_blacklist != "none" ) { c("***") }`
 
-#### Excluded genes
+`r if ( params$genes_blacklist != "none" ) { c("##### Excluded genes") }`
 
-List of genes excluded from the analysis.
+`r if ( params$genes_blacklist != "none" ) { c("List of genes excluded from the analysis.") }`
 
 ```{r excluded_genes_table, comment = NA, message=FALSE, warning=FALSE}
 ##### Present a gene table in the html report
-if ( !is.na(params$genes_blacklist) ) {
+if ( params$genes_blacklist != "none" ) {
     
   DT::datatable(data = data.frame(Gene = exclgenes), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
     DT::formatStyle( columns = "Gene", 'text-align' = 'center' )
-  
-} else {
-  cat("No genes were excluded.\n\n\n")
 }
 ```
 
@@ -1072,7 +1139,7 @@ if ( !is.na(params$genes_blacklist) ) {
 
 Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
 
-NOTE: **Only non-synonymous variants** are used for this analysis.
+<span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -1107,8 +1174,6 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 </details>
 
-***
-
 <details>
 <summary>Input parameters</summary>
 <font size="2">
@@ -1120,7 +1185,7 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 **Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) are removed and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample are subsampled to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
 
-NOTE: by default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. The *buildref* function (described [here](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html){target="_blank"}) can be used to generate the necessary reference file to run [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} on others assembly.
+<span style="color:#ff0000">NOTE</span>: by default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. The *buildref* function (described [here](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html){target="_blank"}) can be used to generate the necessary reference file to run [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} on others assembly.
 
 </font> 
 </details>
@@ -1140,7 +1205,6 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( nrow(signif_genes_table.datasets[[i]]$dNdScv) > 0 ) {
       
     ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1174,7 +1238,7 @@ for ( i in 1:length(mafFiles) ) {
     saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
   } else {
-      cat(paste("None of the mutated genes demonstrated significant global q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+      cat(paste0("None of the mutated genes demonstrated significant global q-value in dataset ", datasets.list[i], "\n\n"))
   }
 }
 
@@ -1198,7 +1262,6 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( nrow(signif_genes_table.datasets[[i]]$dNdSloc) > 0 ) {
     
     ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1230,7 +1293,7 @@ for ( i in 1:length(mafFiles) ) {
     saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
   
   } else {
-    cat(paste("None of the mutated genes demonstrated significant q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste0("NOTE: none of the mutated genes demonstrated significant q-value in dataset ", datasets.list[i], "!\n\n"))
   }
 }
 
@@ -1255,7 +1318,6 @@ widges.list
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( params$ratios_ci) {
     
     widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
@@ -1264,7 +1326,6 @@ for ( i in 1:length(mafFiles) ) {
     formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "pind_cv", "qallsubs_cv", "pglobal_cv", "qglobal_cv"), 6)
     
   } else {
-    
     widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv", "wind_cv"), 1) %>%
@@ -1399,7 +1460,7 @@ cat("\n\n\n")
 
 Cancer driver genes detection based on positional clustering using [OncodriveClust](http://bg.upf.edu/group/projects/oncodrive-clust.php){target="_blank"} algorithm is based on the fact that most of the variants in cancer causing genes are enriched at few specific loci (hot-spots). According to this concept mutations in these regions potentially change the function of these proteins in a manner that provides an adaptive advantage to cancer cells and consequently are positively selected during clonal evolution of tumours. This property can thus be used to nominate novel candidate driver genes, as described in the paper [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"}.
 
-NOTE: **Only non-synonymous variants** are used for this analysis.
+<span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -1410,8 +1471,6 @@ NOTE: **Only non-synonymous variants** are used for this analysis.
 
 </font> 
 </details>
-
-***
 
 <details>
 <summary>Input parameters</summary>
@@ -1435,9 +1494,7 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
-  if ( !is.null(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) ) {
-    
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
     if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) > 0 ) {
       
       ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1465,10 +1522,10 @@ for ( i in 1:length(mafFiles) ) {
       saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
     } else {
-      cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+      cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
     }
   } else {
-      cat(paste("It was not possible to calculate cluster scores for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+      cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
   }
 }
 
@@ -1492,7 +1549,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   
-  if ( !is.null(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
       
     widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUST), 'text-align' = 'center' ) %>%
@@ -1500,7 +1557,7 @@ for ( i in 1:length(mafFiles) ) {
   formatRound(columns = c("pval", "fdr"), 6)
   
   } else {
-    cat(paste("It was not possible to calculate cluster scores for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
   }
 }
 
@@ -1530,8 +1587,6 @@ cat("\n\n\n")
 </font> 
 </details>
 
-***
-
 <details>
 <summary>Input parameters</summary>
 <font size="2">
@@ -1559,7 +1614,6 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( nrow(oncodriveFML.res.table[[datasets.list[i]]]) > 0 ) {
     
     ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1593,9 +1647,8 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Save the plot as html (PLOTLY)
     saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
-    
   } else {
-      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 
@@ -1619,7 +1672,6 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
   if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveFML) > 0 ) {
     
     ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1648,7 +1700,6 @@ for ( i in 1:length(mafFiles) ) {
         layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
       
     } else {
-      
       p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
@@ -1657,9 +1708,8 @@ for ( i in 1:length(mafFiles) ) {
   
     ##### Add plot to the list for htmlwidgets
     widges.list[[i]] <- as_widget(ggplotly(p))
-    
   } else {
-      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 
@@ -1695,7 +1745,7 @@ for ( i in 1:length(mafFiles) ) {
     file.copy(paste0(oncodriveFML.res[i], ".html"), paste0(outDir, "/driver_analysis_oncodriveFML_plot_", datasets.list[i], ".html"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
     
   } else {
-    cat(paste("OncodriveFML results plot \"", paste0(oncodriveFML.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste("OncodriveFML results plot \"", paste0(oncodriveFML.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 ```
@@ -1719,9 +1769,8 @@ for ( i in 1:length(mafFiles) ) {
     widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveFML, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
       DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveFML), 'text-align' = 'center' ) %>%
   formatRound(columns = c("P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
-  
   } else {
-    cat(paste("OncodriveFML results table \"", paste0(oncodriveFML.res[i], ".tsv"), "\" is not present for dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste("OncodriveFML results table \"", paste0(oncodriveFML.res[i], ".tsv"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 
@@ -1758,544 +1807,163 @@ cat("\n\n\n")
 
 ***
 
-### MutSig {.tabset}
-
-... work in progress
-
-[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig){target="_blank"} (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567){target="_blank"} for details)
-
-***
-
-### CHASMplus {.tabset}
-
-... work in progress
-
-[CHASMplus](https://github.com/KarchinLab/CHASMplus){target="_blank"} (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4){target="_blank"} for details)
-
-***
-
-### Hierarchical HotNet {.tabset}
-
-[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet){target="_blank"} (see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088){target="_blank"} for details) is an improved version of [HotNet2](https://github.com/raphael-group/hotnet2).
-
-... work in progress
-
-***
-
 ## Mutation maps {.tabset .tabset-fade}
 
-Lollipop plot(s) showing mutation spots on protein structure for the top **10 driver genes** detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**. Many oncogenes have a preferential sites which are mutated more often than any other locus. These spots are considered to be mutational hot-spots and lollipop plots can be used to display them along with rest of the mutations. Note, that lollipop plot(s) are generated for MAF files containing field with amino acid changes details. The longest transcript is used if multiple transcripts are available.
+Lollipop plot(s) showing mutation spots on protein structure for driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**. Many oncogenes have a preferential sites which are mutated more often than any other locus. These spots are considered to be mutational hot-spots and lollipop plots can be used to display them along with rest of the mutations. <span style="color:#ff0000">NOTE</span>, that lollipop plot(s) are generated for MAF files containing field with amino acid changes details. The longest transcript is used if multiple transcripts are available.
 
-```{r prot_structre, comment = NA, message=FALSE, warning=FALSE}
+```{r pchange_field_check, comment = NA, message=FALSE, warning=FALSE}
+##### Check if the protein change field is present in any of the MAFs
+pchangeStatus <- FALSE
+
+for ( i in 1:length(mafFiles) ) {
+  pchange = c('HGVSp_Short', 'Protein_Change', 'AAChange')
+        
+  ##### Define the column with protein change info
+  pchange = pchange[pchange %in% colnames(mafInfo[[i]]@data)]
+  
+  ##### Check if the protein change field is not empty
+  if ( any(!is.na(as.data.frame(mafInfo[[i]]@data)[ , pchange  ]))  ) {
+    pchangeStatus <- TRUE
+    
+    ##### Create directory for pdf files
+    mutationMapsDir <- paste0(normalizePath(outDir), "/", "MAF_mutation_maps")
+    
+    if ( !file.exists(mutationMapsDir) ){
+      dir.create(mutationMapsDir, recursive=TRUE)
+    }
+  }
+}
+```
+
+```{r prot_structre, comment = NA, message=FALSE, warning=FALSE, eval=pchangeStatus}
 ##### Get list of proteins for which structure is available within maftools
 gff = system.file('extdata', 'protein_domains.RDs', package = 'maftools')
 gff = readRDS(file = gff)
 ```
 
 ### dNdScv {.tabset}
- 
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[1]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[1] }`
 
-```{r lollipop_plot_dNdScv_1, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-###### Generate lollipop plot
+```{r lollipop_plots_dNdScv, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  
+  for( i in 1:length(unlist(signif_genes.methods$dNdScv)) ){
+    cat("\n#### ", verify_genes(unlist(signif_genes.methods$dNdScv))[i], "\n")
+    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdScv)[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$dNdScv)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
 
-##### Create directory for pdf files
-mutationMapsDir <- paste0(normalizePath(outDir), "/", "MAF_mutation_maps")
-
-if ( !file.exists(mutationMapsDir) ){
-  dir.create(mutationMapsDir, recursive=TRUE)
-}
-
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[1]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[1]), silent = TRUE)
 } else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[1], "is not available\n\n\n\n", sep=" "))
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
 }
 ```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[2]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[2] }`
-
-```{r lollipop_plot_dNdScv_2, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[2]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[2]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[2], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[3]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[3] }`
-
-```{r lollipop_plot_dNdScv_3, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[3]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[3]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[3], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[4]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[4] }`
-
-```{r lollipop_plot_dNdScv_4, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[4]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[4]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[4], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[5]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[5] }`
-
-```{r lollipop_plot_dNdScv_5, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[5]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[5]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[5], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[6]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[6] }`
-
-```{r lollipop_plot_dNdScv_6, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[6]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[6]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[6], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[7]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[7] }`
-
-```{r lollipop_plot_dNdScv_7, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[7]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[7]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[7], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[8]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[8] }`
-
-```{r lollipop_plot_dNdScv_8, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[8]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[8]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[8], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[9]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[9] }`
-
-```{r lollipop_plot_dNdScv_9, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[9]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[9]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[9], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdScv))[10]) ) { verify_genes(unlist(signif_genes.methods$dNdScv))[10] }`
-
-```{r lollipop_plot_dNdScv_10, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[10]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdScv))[10]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdScv))[10], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
 
 ### dNdSloc {.tabset}
 
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[1]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[1] }`
+```{r lollipop_plots_dNdSloc, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  
+  for( i in 1:length(unlist(signif_genes.methods$dNdSloc)) ){
+    cat("\n#### ", verify_genes(unlist(signif_genes.methods$dNdSloc))[i], "\n")
+    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdSloc)[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$dNdSloc)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
 
-```{r lollipop_plot_dNdSloc_1, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[1]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[1]), silent = TRUE)
 } else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[1], "is not available\n\n\n\n", sep=" "))
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
 }
 ```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[2]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[2] }`
-
-```{r lollipop_plot_dNdSloc_2, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[2]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[2]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[2], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[3]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[3] }`
-
-```{r lollipop_plot_dNdSloc_3, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[3]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[3]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[3], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[4]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[4] }`
-
-```{r lollipop_plot_dNdSloc_4, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[4]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[4]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[4], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[5]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[5] }`
-
-```{r lollipop_plot_dNdSloc_5, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[5]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[5]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[5], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[6]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[6] }`
-
-```{r lollipop_plot_dNdSloc_6, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[6]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[6]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[6], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[7]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[7] }`
-
-```{r lollipop_plot_dNdSloc_7, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[7]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[7]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[7], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[8]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[8] }`
-
-```{r lollipop_plot_dNdSloc_8, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[8]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[8]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[8], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[9]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[9] }`
-
-```{r lollipop_plot_dNdSloc_9, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[9]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[9]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[9], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$dNdSloc))[10]) ) { verify_genes(unlist(signif_genes.methods$dNdSloc))[10] }`
-
-```{r lollipop_plot_dNdSloc_10, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[10]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$dNdSloc))[10]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$dNdSloc))[10], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
 
 ### OncodriveCLUST {.tabset}
 
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[1]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[1] }`
+```{r lollipop_plots_OncodriveCLUST, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  
+  for( i in 1:length(unlist(signif_genes.methods$OncodriveCLUST)) ){
+    cat("\n#### ", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[i], "\n")
+    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveCLUST)[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveCLUST)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
 
-```{r lollipop_plot_OncodriveCLUST_1, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[1]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[1]), silent = TRUE)
 } else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[1], "is not available\n\n\n\n", sep=" "))
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
 }
 ```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[2]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[2] }`
-
-```{r lollipop_plot_OncodriveCLUST_2, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[2]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[2]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[2], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[3]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[3] }`
-
-```{r lollipop_plot_OncodriveCLUST_3, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[3]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[3]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[3], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[4]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[4] }`
-
-```{r lollipop_plot_OncodriveCLUST_4, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[4]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[4]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[4], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[5]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[5] }`
-
-```{r lollipop_plot_OncodriveCLUST_5, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[5]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[5]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[5], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[6]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[6] }`
-
-```{r lollipop_plot_OncodriveCLUST_6, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[6]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[6]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[6], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[7]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[7] }`
-
-```{r lollipop_plot_OncodriveCLUST_7, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[7]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[7]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[7], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[8]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[8] }`
-
-```{r lollipop_plot_OncodriveCLUST_8, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[8]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[8]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[8], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[9]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[9] }`
-
-```{r lollipop_plot_OncodriveCLUST_9, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[9]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[9]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[9], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[10]) ) { verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[10] }`
-
-```{r lollipop_plot_OncodriveCLUST_10, comment = NA, message=FALSE, warning=FALSE, results = "asis"}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[10]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[10]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[10], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
 
 ### OncodriveFML {.tabset}
 
-**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
 
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[1] }`
+```{r lollipop_plots_OncodriveFML, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  
+  for( i in 1:length(unlist(signif_genes.methods$OncodriveFML)) ){
+    cat("\n#### ", verify_genes(unlist(signif_genes.methods$OncodriveFML))[i], "\n")
+    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveFML)[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveFML)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
 
-```{r lollipop_plot_OncodriveFML_1, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[1]), silent = TRUE)
 } else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[1], "is not available\n\n\n\n", sep=" "))
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
 }
 ```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[2] }`
-
-```{r lollipop_plot_OncodriveFML_2, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[2]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[2], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[3] }`
-
-```{r lollipop_plot_OncodriveFML_3, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[3]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[3], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[4] }`
-
-```{r lollipop_plot_OncodriveFML_4, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[4]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[4], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[5] }`
-
-```{r lollipop_plot_OncodriveFML_5, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[5]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[5], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[6] }`
-
-```{r lollipop_plot_OncodriveFML_6, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[6]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[6], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[7] }`
-
-```{r lollipop_plot_OncodriveFML_7, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[7]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[7], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[8] }`
-
-```{r lollipop_plot_OncodriveFML_8, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[8]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[8], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[9] }`
-
-```{r lollipop_plot_OncodriveFML_9, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[9]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[9], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
-
-#### `r if ( !is.na(verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]) ) { verify_genes(unlist(signif_genes.methods$OncodriveFML))[10] }`
-
-```{r lollipop_plot_OncodriveFML_10, comment = NA, message=FALSE, warning=FALSE, results = "asis", eval=runOncodrivefmlChunk}
-if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]]) != 0 ) {
-  try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = verify_genes(unlist(signif_genes.methods$OncodriveFML))[10]), silent = TRUE)
-} else {
-   cat(paste("The protein structure for protein encoded by", verify_genes(unlist(signif_genes.methods$OncodriveFML))[10], "is not available\n\n\n\n", sep=" "))
-}
-```
-
-***
 
 ## Mutations annotation {.tabset}
 
-Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**) in affected samples.
+Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets), collapse = ", ")`**) in affected samples.
 
-NOTE: mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
+<span style="color:#ff0000">NOTE</span>: mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
 
 ### dNdScv
 
@@ -2361,15 +2029,20 @@ cat("\n\n\n")
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+    
+    annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUST[[i]], ]
   
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUST[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    ##### Move gene name to the first column
+    col_idx <- grep("gene", names(annotmuts))
+    annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
+    
+    widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
         DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
+  
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
 }
 
 ##### Print a list of htmlwidgets
@@ -2383,7 +2056,7 @@ cat("\n\n\n")
 
 ### OncodriveFML
 
-**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
 
 ```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
 ##### Present results summary table in the html report
@@ -2413,7 +2086,7 @@ cat("\n\n\n")
 
 ## Mutation details {.tabset .tabset-fade}
 
-Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets), collapse = ", ")`**.
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -2431,7 +2104,16 @@ Tables with detailed variant's information in affected samples, as as provided i
 
 ```{r details_mut_dNdScv_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "nonsynonymous")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdScv[[i]], type = "nonsynonymous")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2442,7 +2124,16 @@ cat("\n\n\n")
 
 ```{r details_mut_dNdScv_silent, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "silent")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdScv[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2455,7 +2146,16 @@ cat("\n\n\n")
 
 ```{r details_mut_dNdSloc_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdSloc[[i]], type = "nonsynonymous")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdSloc[[i]], type = "nonsynonymous")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2466,7 +2166,16 @@ cat("\n\n\n")
 
 ```{r details_mut_dNdSloc_silent, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$dNdScv[[i]], type = "silent")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdSloc[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2479,7 +2188,20 @@ cat("\n\n\n")
 
 ```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "nonsynonymous")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUST[[i]], type = "nonsynonymous")
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2490,7 +2212,20 @@ cat("\n\n\n")
 
 ```{r details_mut_OncodriveCLUST_silent, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveCLUST[[i]], type = "silent")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUST[[i]], type = "silent")
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2499,13 +2234,22 @@ cat("\n\n\n")
 
 ### OncodriveFML {.tabset .tabset-fade}
 
-**`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("OncodriveFML results are NOT AVAILABLE.") }`**
+`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
 
 #### Non-synonymous
 
 ```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "nonsynonymous")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveFML[[i]], type = "nonsynonymous")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2516,7 +2260,16 @@ cat("\n\n\n")
 
 ```{r details_mut_OncodriveFML_silent, comment = NA, message=FALSE, warning=FALSE}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
-mut.details.datasets(mafInfo, datasets.list, signif_genes.methods$OncodriveFML[[i]], type = "silent")
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveFML[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
@@ -2547,7 +2300,7 @@ for ( i in 1:length(mafFiles) ) {
                       backgroundColor = DT::styleEqual(c("No", "Yes"), c("transparent", "black")), color = DT::styleEqual(c("No", "Yes"), c("black", "white")))
     
   } else {
-    cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 
@@ -2575,7 +2328,7 @@ for ( i in 1:length(mafFiles) ) {
     cat("<br/><br/><br/>")
     
   } else {
-    cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n\n\n", sep=" "))
+    cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 ```
