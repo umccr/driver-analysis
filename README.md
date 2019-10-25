@@ -289,7 +289,7 @@ Argument | Description | Required
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`) | No
 --max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`) | No
 --ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`) | No
---genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL) | No
+--genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL). NOTE, this option is implemented only in [dNdS](#dnds) method and relevant for targeted sequencing studies | No
 --genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines | No
 --samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed | No
 --nonSyn_list | List of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants. Default uses [Variant Classifications](http://asia.ensembl.org/Help/Glossary?id=535) with `High/Moderate variant consequences` | No
