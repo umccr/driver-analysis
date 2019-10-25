@@ -672,7 +672,6 @@ for ( i in 1:length(mafFiles) ) {
 silent_categories <- NULL
 
 for ( i in 1:length(mafFiles) ) {
-  
   silent_categories <- unique( c(silent_categories, mafInfo[[i]]@maf.silent$Variant_Classification) )
 }
 ```
@@ -1004,7 +1003,7 @@ Table(s) summarising samples in individual datasets. Each table contains per-sam
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- DT::datatable( data = maftools::getSampleSummary(mafInfo.all[[i]]), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = maftools::getSampleSummary(mafInfo.all[[i]]), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(maftools::getSampleSummary(mafInfo.all[[i]])), 'text-align' = 'center' )
 }
 
@@ -1042,7 +1041,7 @@ cat("\n\n\n")
 ##### Present a samples table in the html report
 if ( params$samples_blacklist != "none" ) {
     
-  DT::datatable(data = exclsamples.df, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  DT::datatable(data = exclsamples.df, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = names(exclsamples.df), 'text-align' = 'center' )
 }
 ```
@@ -1060,7 +1059,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
     
-  widges.list[[i]] <- DT::datatable( data = exclsamples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclsamples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = exclsamples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclsamples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(exclsamples[[i]]), 'text-align' = 'center' )
 }
 
@@ -1108,7 +1107,7 @@ Table(s) summarising mutated genes in individual datasets. Each table contains p
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- DT::datatable(data = maftools::getGeneSummary(mafInfo.all[[i]]), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable(data = maftools::getGeneSummary(mafInfo.all[[i]]), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(maftools::getGeneSummary(mafInfo.all[[i]])), 'text-align' = 'center' )
 }
 
@@ -1126,7 +1125,7 @@ widges.list
 ##### Present a gene table in the html report
 if ( params$genes_blacklist != "none" ) {
     
-  DT::datatable(data = data.frame(Gene = exclgenes), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  DT::datatable(data = data.frame(Gene = exclgenes), caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;'), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 10, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy'), scrollX = TRUE, deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
     DT::formatStyle( columns = "Gene", 'text-align' = 'center' )
 }
 ```
@@ -1227,15 +1226,12 @@ for ( i in 1:length(mafFiles) ) {
     y_range <- c(0, max(data.df$q_global) + max(data.df$q_global)*0.1)
     
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
       layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
-  
-    ##### Add plot to the list for htmlwidgets
-    widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
   } else {
       cat(paste0("None of the mutated genes demonstrated significant global q-value in dataset ", datasets.list[i], "\n\n"))
@@ -1282,15 +1278,12 @@ for ( i in 1:length(mafFiles) ) {
     y_range <- c(0, max(data.df$q_all) + max(data.df$q_all)*0.1)
     
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_all, size = data.df$q_mis, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_all, size = data.df$q_mis, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
       layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE )
-
-    ##### Add plot to the list for htmlwidgets
-    widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
   
   } else {
     cat(paste0("NOTE: none of the mutated genes demonstrated significant q-value in dataset ", datasets.list[i], "!\n\n"))
@@ -1320,13 +1313,13 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   if ( params$ratios_ci) {
     
-    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv","wnon_cv", "wspl_cv", "wind_cv", "mis_mle", "tru_mle", "mis_low", "tru_low", "mis_high", "tru_high"), 1) %>%
     formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "pind_cv", "qallsubs_cv", "pglobal_cv", "qglobal_cv"), 6)
     
   } else {
-    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv", "wind_cv"), 1) %>%
     formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "pind_cv"), 6)
@@ -1366,7 +1359,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
     
-  widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdSloc, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdSloc), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdSloc, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdSloc), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdSloc), 'text-align' = 'center' ) %>%
   formatRound(columns = c("wmis_loc", "wnon_loc", "wspl_loc"), 1) %>%
   formatRound(columns = c("pall_loc", "qall_loc", "pmis_loc", "qmis_loc"), 6)
@@ -1409,7 +1402,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
     
-  widges.list[[i]] <- DT::datatable( data = globaldnds[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(globaldnds[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = globaldnds[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(globaldnds[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(globaldnds[[i]]), 'text-align' = 'center' ) %>%
     formatRound(columns = c("mle", "cilow", "cihigh"), 1) 
 }
@@ -1443,7 +1436,7 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
     
-  widges.list[[i]] <- DT::datatable( data = exclmuts[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclmuts[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = exclmuts[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclmuts[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(exclmuts[[i]]), 'text-align' = 'center' )
 }
 
@@ -1511,15 +1504,12 @@ for ( i in 1:length(mafFiles) ) {
       y_range <- c(0, max(data.df$fdr) + max(data.df$fdr)*0.1)
       
       ##### Generate scatter-plot
-      p <- plot_ly(data.df, x = ~mutations_no, y = data.df$fdr, color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$fdr, color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         layout(title = datasets.list[i], xaxis = list(title = "Number of mutations in clusters", range = x_range), yaxis = list(title = "-log10( FDR )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
-    
-      ##### Add plot to the list for htmlwidgets
-      widges.list[[i]] <- as_widget(ggplotly(p))
       
       ##### Save the plot as html (PLOTLY)
-      saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+      saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
     
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
@@ -1551,7 +1541,7 @@ for ( i in 1:length(mafFiles) ) {
   
   if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
       
-    widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUST), 'text-align' = 'center' ) %>%
   formatRound(columns = c("clusterScores", "zscore", "fract_muts_in_clusters"), 1) %>%
   formatRound(columns = c("pval", "fdr"), 6)
@@ -1637,16 +1627,13 @@ for ( i in 1:length(mafFiles) ) {
     y_range <- c(0, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
      
     ##### Generate scatter-plot
-    p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top", text=genes_text) %>%
       add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
       layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
-  
-    ##### Add plot to the list for htmlwidgets
-    widges.list[[i]] <- as_widget(ggplotly(p))
     
     ##### Save the plot as html (PLOTLY)
-    saveWidgetFix(as_widget(p), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
+    saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
   } else {
       cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
   }
@@ -1694,20 +1681,18 @@ for ( i in 1:length(mafFiles) ) {
     ##### Check if any of the significant genes have determined q-value
     if ( !all(is.na(data.df$q)) ) {
       
-      p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
         layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
       
     } else {
-      p <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
         layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE)
     }
   
-    ##### Add plot to the list for htmlwidgets
-    widges.list[[i]] <- as_widget(ggplotly(p))
   } else {
       cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
   }
@@ -1719,7 +1704,6 @@ detach("package:plotly", unload=FALSE)
 ##### Print a list of htmlwidgets
 widges.list
 ```
-
 
 ***
 
@@ -1766,7 +1750,7 @@ for ( i in 1:length(mafFiles) ) {
   ##### Check if the OncodriveFML results plot (HTML) exists
   if ( nrow(signif_genes_table.datasets[[i]]$OncodriveFML) > 0 ) {
     
-    widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveFML, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveFML, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveFML), 'text-align' = 'center' ) %>%
   formatRound(columns = c("P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
   } else {
@@ -1848,10 +1832,11 @@ gff = readRDS(file = gff)
 if ( pchangeStatus ) {
   
   output_plot <- list()
+  genes <- verify_genes(unlist(signif_genes.methods$dNdScv))
   
-  for( i in 1:length(unlist(signif_genes.methods$dNdScv)) ){
-    cat("\n#### ", verify_genes(unlist(signif_genes.methods$dNdScv))[i], "\n")
-    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdScv))[i]]) != 0 ) {
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
       try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdScv)[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
@@ -1877,10 +1862,11 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
+  genes <- verify_genes(unlist(signif_genes.methods$dNdSloc))
   
-  for( i in 1:length(unlist(signif_genes.methods$dNdSloc)) ){
-    cat("\n#### ", verify_genes(unlist(signif_genes.methods$dNdSloc))[i], "\n")
-    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$dNdSloc))[i]]) != 0 ) {
+  for( i in 1:length(genes) ){
+    cat("\n#### ", verify_genes(genes)[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
       try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdSloc)[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
@@ -1906,10 +1892,11 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
+  genes <- verify_genes(unlist(signif_genes.methods$OncodriveCLUST))
   
-  for( i in 1:length(unlist(signif_genes.methods$OncodriveCLUST)) ){
-    cat("\n#### ", verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[i], "\n")
-    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveCLUST))[i]]) != 0 ) {
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
       try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveCLUST)[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
@@ -1937,10 +1924,11 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
+  genes <- verify_genes(unlist(signif_genes.methods$OncodriveFML))
   
-  for( i in 1:length(unlist(signif_genes.methods$OncodriveFML)) ){
-    cat("\n#### ", verify_genes(unlist(signif_genes.methods$OncodriveFML))[i], "\n")
-    if ( nrow(gff[HGNC %in% verify_genes(unlist(signif_genes.methods$OncodriveFML))[i]]) != 0 ) {
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
       try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveFML)[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
@@ -1980,7 +1968,7 @@ for ( i in 1:length(mafFiles) ) {
   col_idx <- grep("gene", names(annotmuts))
   annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
   
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
 }
 
@@ -2008,7 +1996,7 @@ for ( i in 1:length(mafFiles) ) {
   col_idx <- grep("gene", names(annotmuts))
   annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
   
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
 }
 
@@ -2037,7 +2025,7 @@ for ( i in 1:length(mafFiles) ) {
     col_idx <- grep("gene", names(annotmuts))
     annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
     
-    widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+    widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
   
   } else {
@@ -2071,7 +2059,7 @@ for ( i in 1:length(mafFiles) ) {
   col_idx <- grep("gene", names(annotmuts))
   annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
   
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE) ) %>%
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
 }
 
@@ -2292,7 +2280,7 @@ for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
     
     ##### Generate a table
-    widges.list[[i]] <- DT::datatable( data = signif_genes.upset.mod[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", rownames = TRUE, extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE)) %>%
+    widges.list[[i]] <- DT::datatable( data = signif_genes.upset.mod[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", rownames = TRUE, extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = colnames(signif_genes.upset.mod[[i]]), `font-size` = '12px', 'text-align' = 'center' ) %>%
       
       ##### Colour cells according to evidence level and trust rating
