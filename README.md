@@ -139,7 +139,6 @@ Argument | Description | Required
 --ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`) | No
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`) | No
 --max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`) | No
---ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`) | No
 --genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL). NOTE, this option is implemented only in [dNdS](#dnds) method and relevant for targeted sequencing studies | No
 --genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines | No
 --samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed | No
@@ -151,6 +150,7 @@ Argument | Description | Required
 --remove_duplicated_variants | Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? (defulat is `TRUE`). **Note**, option `TRUE` removes all repeated variants as duplicated entries. `FALSE` results in keeping all of them) | No
 --out_folder | Output folder (defualt is `Driver_analysis_report`) | No
 --hide_code_btn | Hide the *Code* button allowing to show/hide code chunks in the final HTML report. Available options are: `TRUE` (default) and `FALSE` | No
+--ucsc_genome_assembly | Version of UCSC genome assembly to be used as a reference (defualt is `19`, other available option is `38`) | No
 
 <br />
 
