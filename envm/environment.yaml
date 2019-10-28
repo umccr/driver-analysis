@@ -26,7 +26,10 @@ dependencies:
         - r-stringr
         - r-plotly=4.9.0
         - r-magick
+        - r-rcircos
         - r-devtools
+        - bioconductor-ensdb.hsapiens.v75
+        - bioconductor-ensdb.hsapiens.v86
         - bioconductor-iranges
         - bioconductor-maftools
         - python-dateutil
