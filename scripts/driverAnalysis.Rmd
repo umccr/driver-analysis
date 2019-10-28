@@ -2348,7 +2348,7 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Report driver genes with missing genomic annotation
     if ( nrow(signif_genes.excl[[i]]) > 0 ) {
-      cat("* The genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot:*", paste(signif_genes.excl[[i]], collapse = ", "), "*\n\n", sep=" ")
+      cat("* The genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot: ", paste(signif_genes.excl[[i]]$Gene, collapse = ", "), " \n\n", sep=" ")
     }
     
     ##### Export pdf to png
@@ -2357,7 +2357,6 @@ for ( i in 1:length(mafFiles) ) {
 
     ##### Read in the PNG files
     cat("![](",paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".png", sep = ""),")")
-    cat("<br/><br/><br/>")
     
   } else {
     cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n", sep=" "))
