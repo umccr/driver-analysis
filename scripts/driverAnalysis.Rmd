@@ -14,14 +14,13 @@ output:
 params:
   maf_dir: 
   maf_files: 
-  samples_id_cols: 
   datasets: 
+  samples_id_cols: 
   dnds_q: 0.1
   oncodriveclust_fdr: 0.5
   ratios_ci: FALSE
   hypermut_sample_cutoff: 250
   max_muts_per_gene: 2
-  ucsc_genome_assembly: 19
   genes_list: 'none'
   genes_blacklist: 'none'
   samples_blacklist: 'none'
@@ -34,6 +33,8 @@ params:
   remove_duplicated_variants: TRUE
   hide_code_btn: TRUE
   out_folder: 'Driver_analysis_report'
+  ucsc_genome_assembly: 19
+  ensembl_version: 75
 ---
 
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
@@ -288,66 +289,6 @@ cluster_prot <- function(prot.dat, gene, th, protLen){
   return(gene.clust.res)
 }
 
-###### Generate lollipop plot for each dataset for selected gene
-lollipops.datasets <- function(mafInfo, datasets, gene) {
-  
-  ##### Create a list to store MAF info for individual datasets
-  for ( dataset in datasets ) {
-    
-    mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = TRUE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
-    
-    ##### Check if the gene has any mutations in correspoding dataset
-    if ( nrow(mut) != 0 ) {
-      
-      ##### Drawing lollipop for the top 10 genes in each dataset
-      ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable. NOTE: other possibilities are: "Protein_Change", "AAChange""
-      pchange = c('HGVSp_Short', 'Protein_Change', 'AAChange')
-      
-      ##### Define the column with protein change info
-      pchange = pchange[pchange %in% colnames(mut)]
-      
-      ##### Check if the protein change field is not empty
-      if ( any(!is.na(as.data.frame(mut)[ , pchange  ]))  ) {
-        
-        cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-        
-        ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
-        pdf(file=paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf"), width = 8, height = 5)
-        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = pchange, printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE))
-        invisible(dev.off())
-        
-        ##### Export pdf to png
-        lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
-        image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
-        
-        ##### Read in the PNG files
-        cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
-        cat("<br/><br/><br/>")
-        
-        ##### Remove redundant pdf plot
-        file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
-    
-      ##### ...otherwise leave a message
-      } else {
-        
-        ##### Check if the genes has any synonymous vatiants
-        if ( length(pchange[pchange %in% colnames(mafInfo[[dataset]]@maf.silent)]) > 0 && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol && any(!is.na(as.data.frame(mafInfo[[dataset]]@maf.silent)[ , pchange  ])) ) {
-        
-          cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n", sep=" "))
-      
-        } else {
-          cat(paste("This section was skipped for dataset", dataset, "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
-        }
-      }
-        
-    } else {
-        
-      cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
-    }
-  }
-}
-
 ###### Generate dataTable for each dataset with all mutation information for selected gene(s), as provided in MAF files. User can filter variants to include only non-synonymous (defualt), silent or all variants
 mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous") {
   
@@ -415,7 +356,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
   ##### Create a list to store MAF info for individual datasets
   for ( dataset in datasets ) {
     
-    mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = TRUE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
+    mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = FALSE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
     
     ##### Check if the gene has any mutations in correspoding dataset
     if ( nrow(mut) != 0 ) {
@@ -432,22 +373,30 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
         
         cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
         
-        ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
-        pdf(file=paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf"), width = 8, height = 5)
-        lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = pchange, printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE))
-        invisible(dev.off())
+        ##### Check if non-synonymous variats are detected
+        if ( gene %in% mut$Hugo_Symbol ) {
         
-        ##### Export pdf to png
-        lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
-        image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
+          ##### Make it plot to a dummy graphics device file (e.g. /dev/null) to avoid plotting to the console
+          pdf(file=paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf"), width = 8, height = 5)
+          lollipopPlot.image <- capture.output(maftools::lollipopPlot(maf = mafInfo[[dataset]], gene = gene, AACol = pchange, printCount = FALSE, showDomainLabel = FALSE, repel = FALSE, labelPos = "all" , showMutationRate = TRUE, cBioPortal = TRUE))
+          invisible(dev.off())
+          
+          ##### Export pdf to png
+          lollipopPlot.image <- image_read_pdf(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""), pages = NULL, density = 300)
+          image_write(lollipopPlot.image, path = paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".png", sep = ""), format = "png")
+          
+          ##### Read in the PNG files
+          cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
+          cat("<br/><br/><br/>")
+          
+          ##### Remove redundant pdf plot
+          file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
+          while (!is.null(dev.list()))  invisible(dev.off())
+        } else {
+          cat(paste("**", gene, " have no non-synonymous variants detected in ", dataset, "dataset**.\n\n", sep=" "))
+          cat("\n***\n")
+        }
         
-        ##### Read in the PNG files
-        cat("![](",paste(paste0(mutationMapsDir, "/", paste(dataset, gene, sep="_")), ".png", sep = ""),")")
-        cat("<br/><br/><br/>")
-        
-        ##### Remove redundant pdf plot
-        file.remove(paste(mutationMapsDir, "/", paste(dataset, gene, sep="_"), ".pdf", sep = ""))
-    
       ##### ...otherwise leave a message
       } else {
         
@@ -462,7 +411,6 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
       }
         
     } else {
-        
       cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
       cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
     }
@@ -490,6 +438,8 @@ suppressMessages(library(DT))
 suppressMessages(library(UpSetR))
 suppressMessages(library(stringr))
 suppressMessages(library(magick))
+suppressMessages(library(RCircos))
+suppressMessages(library(package=paste0("EnsDb.Hsapiens.v", params$ensembl_version), character.only = TRUE))
 ```
 
 ```{r load_data, message=FALSE, warning=FALSE, results='hide'}
@@ -954,6 +904,50 @@ for ( i in 1:length(mafFiles) ) {
   }
 }
 ```
+
+```{r gene_annot, comment = NA, message=FALSE, warning=FALSE}
+##### Create a list to store genes annotations for each dataset
+signif_genes.annot <- vector("list", length(mafFiles))
+names(signif_genes.annot) <- datasets.list
+
+##### Loop through each dataset and annotate detected cancer driver genes
+for ( i in 1:length(mafFiles) ) {
+  
+  if ( length(signif_genes[[i]]) > 0 ) {
+    data.df <- as.data.frame(signif_genes[[i]])
+    colnames(data.df) <- "GENENAME"
+  
+    ##### Get genes annotation and genomic locations
+    edb <- eval(parse(text = paste0("EnsDb.Hsapiens.v", params$ensembl_version)))
+    
+    ##### Get keytypes for gene SYMBOL
+    keys <- keys(edb, keytype="GENENAME")
+    
+    ##### Get genes genomic coordiantes
+    gene_info <- ensembldb::select(edb, keys=keys, columns=c("SEQNAME", "GENESEQSTART", "GENESEQEND","GENENAME"), keytype="GENENAME")
+    
+    ##### Remove rows with duplicated gene symbols (Y_RNAs, SNORs, LINC0s etc)
+    gene_info = gene_info[!duplicated(gene_info$GENENAME),]
+
+    ##### Limit genes annotation to driver genes
+    gene_info <-  gene_info[ gene_info$GENENAME %in% data.df$GENENAME,  ]
+    
+    ##### Change column names
+    names(gene_info) <- gsub("SEQNAME", "Chromosome", names(gene_info))
+    names(gene_info) <- gsub("GENESEQSTART", "chromStart", names(gene_info))
+    names(gene_info) <- gsub("GENESEQEND", "chromEnd", names(gene_info))
+    names(gene_info) <- gsub("GENENAME", "Gene", names(gene_info))
+    
+    ##### Add "chr" to chromosome numbers
+    gene_info$Chromosome <- paste0("chr", gene_info$Chromosome)
+    signif_genes.annot[[i]] <- gene_info
+  }
+}
+
+##### Clean the space
+rm(data.df, edb, keys)
+```
+
 
 ## Datasets  {.tabset}
 
@@ -1832,12 +1826,12 @@ gff = readRDS(file = gff)
 if ( pchangeStatus ) {
   
   output_plot <- list()
-  genes <- verify_genes(unlist(signif_genes.methods$dNdScv))
+  genes <- unique(verify_genes(unlist(signif_genes.methods$dNdScv)))
   
   for( i in 1:length(genes) ){
     cat("\n#### ", genes[i], "\n")
     if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
-      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdScv)[i]), silent = TRUE)
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
       cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$dNdScv)[i], "is not available\n\n", sep=" "))
@@ -1862,12 +1856,12 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
-  genes <- verify_genes(unlist(signif_genes.methods$dNdSloc))
+  genes <- unique(verify_genes(unlist(signif_genes.methods$dNdSloc)))
   
   for( i in 1:length(genes) ){
     cat("\n#### ", verify_genes(genes)[i], "\n")
     if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
-      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$dNdSloc)[i]), silent = TRUE)
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
       cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$dNdSloc)[i], "is not available\n\n", sep=" "))
@@ -1892,12 +1886,12 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
-  genes <- verify_genes(unlist(signif_genes.methods$OncodriveCLUST))
+  genes <- unique(verify_genes(unlist(signif_genes.methods$OncodriveCLUST)))
   
   for( i in 1:length(genes) ){
     cat("\n#### ", genes[i], "\n")
     if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
-      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveCLUST)[i]), silent = TRUE)
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
       cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveCLUST)[i], "is not available\n\n", sep=" "))
@@ -1924,12 +1918,12 @@ if ( pchangeStatus ) {
 if ( pchangeStatus ) {
   
   output_plot <- list()
-  genes <- verify_genes(unlist(signif_genes.methods$OncodriveFML))
+  genes <- unique(verify_genes(unlist(signif_genes.methods$OncodriveFML)))
   
   for( i in 1:length(genes) ){
     cat("\n#### ", genes[i], "\n")
     if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
-      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = unlist(signif_genes.methods$OncodriveFML)[i]), silent = TRUE)
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
       cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveFML)[i], "is not available\n\n", sep=" "))
@@ -2299,6 +2293,83 @@ widges.list
 cat("\n\n\n")
 ```
 
+***
+
+### Circos plot
+
+Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+
+```{r circos_prep, comment = NA, message=FALSE, warning=FALSE}
+##### Prepare circos plot with cancer driver genes detected by various methods
+signif_genes.excl <- vector("list", length(mafFiles))
+names(signif_genes.excl) <- datasets.list
+
+signif_genes.incl <- vector("list", length(mafFiles))
+names(signif_genes.incl) <- datasets.list
+
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes[[i]]) > 0 ) {
+    
+    data(UCSC.HG19.Human.CytoBandIdeogram)
+    cyto.info <- eval(parse( text=paste0("UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram ")))
+    
+    ##### Check if all driver genes are located in standard chromosomes
+    signif_genes.excl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %!in% cyto.info$Chromosome,  ]
+    signif_genes.incl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %in% cyto.info$Chromosome,  ]
+    
+    if ( nrow(signif_genes.incl[[i]]) > 100 ) {
+      tracks.inside <- 8
+    } else if ( nrow(signif_genes.incl[[i]]) > 50 ) {
+      tracks.inside <- 6
+    } else {
+      tracks.inside <- 4
+    }
+    
+    RCircos.Set.Core.Components ( cyto.info=cyto.info, chr.exclude=NULL, tracks.inside=tracks.inside, tracks.outside=0)
+    
+    ##### Save circos into a pdf file
+    pdf(file = paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".pdf", sep = ""), height = 14, width = 14, pointsize = 18) 
+    
+    RCircos.Set.Plot.Area()  
+    RCircos.Chromosome.Ideogram.Plot()
+    RCircos.Gene.Connector.Plot(genomic.data = signif_genes.incl[[i]], track.num = 1,  side="in") 
+    RCircos.Gene.Name.Plot(gene.data = signif_genes.incl[[i]], name.col = 4, track.num = 2, side = "in")
+    dev.off()
+  }
+}
+```
+
+```{r circos_plot, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Present circos plot with cancer driver genes detected by various methods
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes[[i]]) > 0 ) {
+    
+    cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
+    
+    ##### Report driver genes with missing genomic annotation
+    if ( nrow(signif_genes.excl[[i]]) > 0 ) {
+      cat("* The genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot:*", paste(signif_genes.excl[[i]], collapse = ", "), "*\n\n", sep=" ")
+    }
+    
+    ##### Export pdf to png
+    circos.image <- image_read_pdf(paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".pdf", sep = ""), pages = NULL, density = 300)
+    image_write(circos.image, path = paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".png", sep = ""), format = "png")
+
+    ##### Read in the PNG files
+    cat("![](",paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".png", sep = ""),")")
+    cat("<br/><br/><br/>")
+    
+  } else {
+    cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
 ### Per-method summary plot
 
 Plot(s) illustrating the intersections of driver analysis results between the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
@@ -2311,10 +2382,15 @@ for ( i in 1:length(mafFiles) ) {
     
     cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
     
-    ##### Generate the upset plot to illustrate the overlap between individual methods
-    upset(as.data.frame(t(signif_genes.upset[[i]])), sets = colnames(t(signif_genes.upset[[i]])), sets.bar.color = "#56B4E9", order.by = "freq", empty.intersections = "on", sets.x.label = "Total genes no.", mb.ratio = c(0.5, 0.5))
-    cat("<br/><br/><br/>")
+    png( file = paste(outDir, "/driver_analysis_upset_", datasets.list[i], ".png", sep = ""), width = 1800, height = 800, units = "px", res = 200, type="cairo" )
     
+    upset.image <- capture.output(upset(as.data.frame(t(signif_genes.upset[[i]])), sets = colnames(t(signif_genes.upset[[i]])), sets.bar.color = "#56B4E9", order.by = "freq", empty.intersections = "on", sets.x.label = "Total genes no.", mb.ratio = c(0.5, 0.5)))
+    invisible(dev.off())
+
+    ##### Read in the PNG files
+    cat("![](",paste(outDir, "/driver_analysis_upset_", datasets.list[i], ".png", sep = ""),")")
+    cat("<br/><br/><br/>")
+
   } else {
     cat(paste("None cancer driver gene have been detected by either method in dataset", datasets.list[i], "\n\n", sep=" "))
   }
