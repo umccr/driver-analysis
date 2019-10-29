@@ -42,7 +42,7 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
-* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details, ...work in progress)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
 ```{r code_display, echo = FALSE}
 ##### Include or exclude the "Code" buttom allowing to "show"/"hide" code chunks from the report
@@ -799,6 +799,7 @@ for ( i in 1:length(mafFiles) ) {
   oncodriveClust.res[[datasets.list[i]]] <- oncodrive_analysis(mafInfo[[i]], datasets.list[i], gl) 
 
   if ( !is.null(oncodriveClust.res[[datasets.list[i]]][[1]]) && !is.null(oncodriveClust.res[[datasets.list[i]]][[2]]) ) {
+    
     ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
     oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
     
@@ -812,9 +813,14 @@ for ( i in 1:length(mafFiles) ) {
     ##### Organise the table of significant genes
     signif_genes_table.datasets[[i]]$OncodriveCLUST <- signif_genes_table.datasets[[i]]$OncodriveCLUST[ , c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")]
     
+    runOncodriveClustChunk <- TRUE
+    
   } else {
     signif_genes.datasets[[i]]$OncodriveCLUST <- character()
     signif_genes.methods$OncodriveCLUST[[i]] <- character()
+    
+    methods <- methods[ methods %!in% "OncodriveCLUST" ]
+    runOncodriveClustChunk <- FALSE
   }
 }
 ```
@@ -1010,7 +1016,7 @@ widges.list <- htmltools::tagList()
 
 `r if ( !is.null(MAF_samples.silent.df) ) { c("***") }`
 
-`r if ( !is.null(MAF_samples.silent.df) ) { c("##### Samples with no non-synonymous variants") }`
+`r if ( !is.null(MAF_samples.silent.df) ) { c("#### Samples with no non-synonymous variants") }`
 
 `r if ( !is.null(MAF_samples.silent.df) ) { c("The table below lists sample(s) in which **no non-synonymous variants** were detected and hence will not be included in the summary tables/plots.") }`
 
@@ -1027,7 +1033,7 @@ cat("\n\n\n")
 
 `r if ( params$samples_blacklist != "none" ) { c("***") }`
 
-`r if ( params$samples_blacklist != "none" ) { c("##### Excluded samples") }`
+`r if ( params$samples_blacklist != "none" ) { c("#### Excluded samples") }`
 
 `r if ( params$samples_blacklist != "none" ) { c("List of samples excluded from the analysis.") }`
 
@@ -1470,11 +1476,13 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 ***
 
+[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"} results are **`r if ( runOncodriveClustChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
+
 #### Plot
 
 The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) values in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
-```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE}
+```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 suppressMessages(library(plotly))
 
 ##### Create a list for htmlwidgets
@@ -1526,7 +1534,7 @@ widges.list
 
 Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR) values*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
-```{r oncodriveCLUST_table, comment=NA, warning=FALSE}
+```{r oncodriveCLUST_table, comment=NA, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Generate tables with oncodriveCLUST results
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -1781,13 +1789,12 @@ cat("\n\n\n")
 
 ... work in progress
 
-[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"} (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
 ***
 
 ## Mutation maps {.tabset .tabset-fade}
 
-Lollipop plot(s) showing mutation spots on protein structure for driver genes detected by the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**. Many oncogenes have a preferential sites which are mutated more often than any other locus. These spots are considered to be mutational hot-spots and lollipop plots can be used to display them along with rest of the mutations. <span style="color:#ff0000">NOTE</span>, that lollipop plot(s) are generated for MAF files containing field with amino acid changes details. The longest transcript is used if multiple transcripts are available.
+Lollipop plot(s) showing mutation spots on protein structure for driver genes detected by the following methods: **`r paste(methods, collapse = ", ")`**. Many oncogenes have a preferential sites which are mutated more often than any other locus. These spots are considered to be mutational hot-spots and lollipop plots can be used to display them along with rest of the mutations. <span style="color:#ff0000">NOTE</span>, that lollipop plot(s) are generated for MAF files containing field with amino acid changes details. The longest transcript is used if multiple transcripts are available.
 
 ```{r pchange_field_check, comment = NA, message=FALSE, warning=FALSE}
 ##### Check if the protein change field is present in any of the MAFs
@@ -1879,9 +1886,11 @@ if ( pchangeStatus ) {
 }
 ```
 
-### OncodriveCLUST {.tabset}
+***
 
-```{r lollipop_plots_OncodriveCLUST, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset}") } else { c(" ") }`
+
+```{r lollipop_plots_OncodriveCLUST, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodriveClustChunk}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -1909,11 +1918,9 @@ if ( pchangeStatus ) {
 }
 ```
 
-### OncodriveFML {.tabset}
+`r if ( runOncodrivefmlChunk ) { c("### OncodriveFML {.tabset}") } else { c(" ") }`
 
-`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
-
-```{r lollipop_plots_OncodriveFML, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r lollipop_plots_OncodriveFML, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodrivefmlChunk}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -1943,7 +1950,7 @@ if ( pchangeStatus ) {
 
 ## Mutations annotation {.tabset}
 
-Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(names(signif_genes.datasets), collapse = ", ")`**) in affected samples.
+Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(methods, collapse = ", ")`**) in affected samples.
 
 <span style="color:#ff0000">NOTE</span>: mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
 
@@ -2001,11 +2008,11 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
 
-### OncodriveCLUST
+`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST") } else { c(" ") }`
 
-```{r mutations_annotation_OncodriveCLUST, comment = NA, message=FALSE, warning=FALSE}
+```{r mutations_annotation_OncodriveCLUST, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Present results summary table in the html report
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2034,11 +2041,9 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
 
-### OncodriveFML
-
-`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
+`r if ( runOncodrivefmlChunk ) { c("### OncodriveFML") } else { c(" ") }`
 
 ```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
 ##### Present results summary table in the html report
@@ -2068,7 +2073,7 @@ cat("\n\n\n")
 
 ## Mutation details {.tabset .tabset-fade}
 
-Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(names(signif_genes.datasets), collapse = ", ")`**.
+Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(methods, collapse = ", ")`**.
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -2162,13 +2167,13 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
 
-### OncodriveCLUST {.tabset .tabset-fade}
+`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset .tabset-fade}") } else { c(" ") }`
 
-#### Non-synonymous
+`r if ( runOncodriveClustChunk ) { c("#### Non-synonymous") } else { c(" ") }`
 
-```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2188,11 +2193,11 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
 
-#### Silent
+`r if ( runOncodriveClustChunk ) { c("#### Silent") } else { c(" ") }`
 
-```{r details_mut_OncodriveCLUST_silent, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_OncodriveCLUST_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2212,15 +2217,13 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
 
-### OncodriveFML {.tabset .tabset-fade}
+`r if ( runOncodrivefmlChunk ) { c("### OncodriveFML {.tabset .tabset-fade}") } else { c(" ") }`
 
-`r if ( runOncodrivefmlChunk ) { c(" ") } else { c("**OncodriveFML results are NOT AVAILABLE**.") }`
+`r if ( runOncodrivefmlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
 
-#### Non-synonymous
-
-```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodrivefmlChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2236,11 +2239,11 @@ widges.list
 cat("\n\n\n")
 ```
 
-***
+`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
 
-#### Silent
+`r if ( runOncodrivefmlChunk ) { c("#### Silent") } else { c(" ") }`
 
-```{r details_mut_OncodriveFML_silent, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_OncodriveFML_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodrivefmlChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2262,7 +2265,7 @@ cat("\n\n\n")
 
 ### Per-gene summary table
 
-Table presenting cancer driver genes (rows) detected by the following methods (*columns*): **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+Table presenting cancer driver genes (rows) detected by the following methods (*columns*): **`r paste(methods, collapse = ", ")`**.
 
 ```{r driver_genes_summary_table, comment = NA, message=FALSE, warning=FALSE}
 ##### Presnet the intersections between cancer driver genes detected by various methods
@@ -2297,7 +2300,7 @@ cat("\n\n\n")
 
 ### Circos plot
 
-Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(methods, collapse = ", ")`**.
 
 ```{r circos_prep, comment = NA, message=FALSE, warning=FALSE}
 ##### Prepare circos plot with cancer driver genes detected by various methods
@@ -2319,10 +2322,13 @@ for ( i in 1:length(mafFiles) ) {
     
     if ( nrow(signif_genes.incl[[i]]) > 100 ) {
       tracks.inside <- 8
+      pointsize <- 22
     } else if ( nrow(signif_genes.incl[[i]]) > 50 ) {
       tracks.inside <- 6
+      pointsize <- 20
     } else {
       tracks.inside <- 4
+      pointsize <- 18
     }
     
     RCircos.Set.Core.Components ( cyto.info=cyto.info, chr.exclude=NULL, tracks.inside=tracks.inside, tracks.outside=0)
@@ -2371,7 +2377,7 @@ cat("\n\n\n")
 
 ### Per-method summary plot
 
-Plot(s) illustrating the intersections of driver analysis results between the following methods: **`r paste(names(signif_genes.datasets[[i]]), collapse = ", ")`**.
+Plot(s) illustrating the intersections of driver analysis results between the following methods: **`r paste(methods, collapse = ", ")`**.
 
 ```{r driver_genes_summary_plot, comment = NA, message=FALSE, warning=FALSE, results="asis"}
 ##### Present the intersections between cancer driver genes detected by various methods
