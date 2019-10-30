@@ -16,16 +16,17 @@ params:
   maf_files: 
   datasets: 
   samples_id_cols: 
-  dnds_q: 0.1
+  dnds_p: 0.05
+  dnds_q: 1
   oncodriveclust_fdr: 0.5
   ratios_ci: FALSE
-  hypermut_sample_cutoff: 250
-  max_muts_per_gene: 2
+  hypermut_sample_cutoff: 3000
+  max_muts_per_gene: 3
   genes_list: 'none'
   genes_blacklist: 'none'
   samples_blacklist: 'none'
   nonSyn_list: 'Frame_Shift_Del,Frame_Shift_Ins,Splice_Site,Translation_Start_Site,Nonsense_Mutation,Nonstop_Mutation,In_Frame_Del,In_Frame_Ins,Missense_Mutation'
-  oncodrivefml: '/Users/jmarzec/data/Cohort_analyses/mutation/projects/Hartwig_PC/Hartwig_PDAC_oncodrivefml_analysis/Hartwig_PDAC-oncodrivefml,/Users/jmarzec/data/Cohort_analyses/mutation/projects/Hartwig_PC/Hartwig_PNET_oncodrivefml_analysis/Hartwig_PNET-oncodrivefml'
+  oncodrivefml: 'none'
   oncodrivefml_p: 0.01
   oncodrivefml_q: 0.1
   oncodrivefml_conf: 'none'
@@ -712,7 +713,8 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Get a table of significant genes
   sel_cv[[i]] <- dndsout[[i]]$sel_cv
-  signif_genes_table.datasets[[i]]$dNdScv <- sel_cv[[i]][sel_cv[[i]]$qglobal_cv < params$dnds_q, ]
+  signif_genes_table.datasets[[i]]$dNdScv <- sel_cv[[i]][sel_cv[[i]]$qglobal_cv <= params$dnds_q, ]
+  signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ signif_genes_table.datasets[[i]]$dNdScv$pglobal_cv < params$dnds_p, ]
   rownames(signif_genes_table.datasets[[i]]$dNdScv) = NULL
   
   ##### Organise the table of significant genes
@@ -753,7 +755,8 @@ for ( i in 1:length(mafFiles) ) {
   globaldnds[[i]] <- dndsout[[i]]$globaldnds
   
   ##### Extract results from the local neutrality test based on the dNdSloc model
-  signif_genes_table.datasets[[i]]$dNdSloc <- dndsout[[i]]$sel_loc[ dndsout[[i]]$sel_loc$qall_loc < params$dnds_q, ]
+  signif_genes_table.datasets[[i]]$dNdSloc <- dndsout[[i]]$sel_loc[ dndsout[[i]]$sel_loc$qall_loc <= params$dnds_q, ]
+  signif_genes_table.datasets[[i]]$dNdSloc <- signif_genes_table.datasets[[i]]$dNdSloc[ signif_genes_table.datasets[[i]]$dNdSloc$pall_loc <= params$dnds_p, ]
   rownames(signif_genes_table.datasets[[i]]$dNdSloc) = NULL
   
   ##### Organise the table of significant genes
@@ -846,7 +849,7 @@ for ( i in 1:length(mafFiles) ) {
   oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
 
   ##### Record sinigficant driver genes for each dataset
-  signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE < params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE < params$oncodrivefml_q ]))
+  signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE <= params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE <= params$oncodrivefml_q ]))
   
   ##### Remove NAs
   signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
@@ -1180,6 +1183,7 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 * Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
 * Maximum mutations per gene in same sample: **`r params$max_muts_per_gene`**
 * Mutations per gene to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
+* P-value threshold for reporting significant genes: **`r params$dnds_p`**
 * Q-value threshold for reporting significant genes: **`r params$dnds_q`**
 
 **Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) are removed and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample are subsampled to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
@@ -1195,7 +1199,7 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 ##### dNdScv
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global q-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.
 
 ```{r dndscv_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1206,9 +1210,9 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   if ( nrow(signif_genes_table.datasets[[i]]$dNdScv) > 0 ) {
       
-    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-    q_global <- signif_genes_table.datasets[[i]]$dNdScv$qglobal_cv
-    q_global[ q_global == 0 ] <- 1*10^-16
+    ##### Avoid p-values of 0 by assigning 1*10^-16 to extremely low p-values
+    p_global <- signif_genes_table.datasets[[i]]$dNdScv$pglobal_cv
+    p_global[ p_global == 0 ] <- 1*10^-16
     p_subs <- signif_genes_table.datasets[[i]]$dNdScv$pallsubs_cv
     p_subs[ p_subs == 0 ] <- 1*10^-16
     p_ind <- signif_genes_table.datasets[[i]]$dNdScv$pind_cv
@@ -1218,17 +1222,17 @@ for ( i in 1:length(mafFiles) ) {
     mutations_no <- rowSums(signif_genes_table.datasets[[i]]$dNdScv[ , names(signif_genes_table.datasets[[i]]$dNdScv) %in% c("n_syn", "n_mis", "n_non", "n_spl", "n_ind") ])
     
     ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdScv$gene_name, -log(q_global,10), mutations_no, -log(p_subs,10), -log(p_ind,10) )
-    colnames(data.df) <- c("gene", "q_global", "mutations_no", "p_subs", "p_ind")
+    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdScv$gene_name, -log(p_global,10), mutations_no, -log(p_subs,10), -log(p_ind,10) )
+    colnames(data.df) <- c("gene", "p_global", "mutations_no", "p_subs", "p_ind")
     
     ##### Calculate x and y axis rangeby adding 10% of the original range
     x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-    y_range <- c(0, max(data.df$q_global) + max(data.df$q_global)*0.1)
+    y_range <- c(0, max(data.df$p_global) + max(data.df$p_global)*0.1)
     
     ##### Generate scatter-plot
-    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$p_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
-      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
     
     ##### Save the plot as html (PLOTLY)
     saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
@@ -1249,7 +1253,7 @@ widges.list
 
 ##### dNdSloc
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *q-values* (in -log10 scale) based on all non-synonymous substitutions. The *size* of the points is proportional to -log10 *q-values* based exclusively on missense substitutions detected in individual genes.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *p-values* (in -log10 scale) based on all non-synonymous substitutions. The *size* of the points is proportional to -log10 *p-values* based exclusively on missense substitutions detected in individual genes.
 
 ```{r dndsloc_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1260,33 +1264,33 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   if ( nrow(signif_genes_table.datasets[[i]]$dNdSloc) > 0 ) {
     
-    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-    q_all <- signif_genes_table.datasets[[i]]$dNdSloc$qall_loc
-    q_all[ q_all == 0 ] <- 1*10^-16
-    q_mis <- signif_genes_table.datasets[[i]]$dNdSloc$qmis_loc
-    q_mis[ q_mis == 0 ] <- 1*10^-16
+    ##### Avoid p-values of 0 by assigning 1*10^-16 to extremely low q-values
+    p_all <- signif_genes_table.datasets[[i]]$dNdSloc$pall_loc
+    p_all[ p_all == 0 ] <- 1*10^-16
+    p_mis <- signif_genes_table.datasets[[i]]$dNdSloc$pmis_loc
+    p_mis[ p_mis == 0 ] <- 1*10^-16
     
     ##### Sum up all mutations
     mutations_no <- rowSums(signif_genes_table.datasets[[i]]$dNdSloc[ , names(signif_genes_table.datasets[[i]]$dNdSloc) %in% c("n_syn", "n_mis", "n_non", "n_spl") ])
     
     ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdSloc$gene_name, -log(q_all,10), mutations_no, -log(q_mis,10) )
-    colnames(data.df) <- c("gene", "q_all", "mutations_no", "q_mis")
+    data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdSloc$gene_name, -log(p_all,10), mutations_no, -log(p_mis,10) )
+    colnames(data.df) <- c("gene", "p_all", "mutations_no", "p_mis")
     
     ##### Calculate x and y axis rangeby adding 10% of the original range
     x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-    y_range <- c(0, max(data.df$q_all) + max(data.df$q_all)*0.1)
+    y_range <- c(0, max(data.df$p_all) + max(data.df$p_all)*0.1)
     
     ##### Generate scatter-plot
-    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$q_all, size = data.df$q_mis, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$p_all, size = data.df$q_mis, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
       add_text(textfont = list(size = 10), textposition = "top") %>%
-      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( q-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE )
+      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE )
     
     ##### Save the plot as html (PLOTLY)
     saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_dndsloc_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
   
   } else {
-    cat(paste0("NOTE: none of the mutated genes demonstrated significant q-value in dataset ", datasets.list[i], "!\n\n"))
+    cat(paste0("NOTE: none of the mutated genes demonstrated significant p-value/q-value in dataset ", datasets.list[i], "!\n\n"))
   }
 }
 
@@ -1593,66 +1597,9 @@ cat("\n\n\n")
 
 #### Plot {.tabset}
 
-##### Interactive  {.tabset}
+##### Interactive
 
-###### All genes
-
-[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for **all genes**. The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
-
-```{r oncodriveFML_plot_interactive, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
-suppressMessages(library(plotly))
-
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( nrow(oncodriveFML.res.table[[datasets.list[i]]]) > 0 ) {
-    
-    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-    q_obs <- oncodriveFML.res.table[[datasets.list[i]]]$Q_VALUE
-    q_obs[ q_obs == 0 ] <- 1*10^-16
-    p_obs <- oncodriveFML.res.table[[datasets.list[i]]]$P_VALUE
-    p_obs[ p_obs == 0 ] <- 1*10^-16
-    p_exp <- oncodriveFML.res.table[[datasets.list[i]]]$P_VALUE_EXP
-    p_exp[ p_exp == 0 ] <- 1*10^-16
-    
-    ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(oncodriveFML.res.table[[datasets.list[i]]]$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), oncodriveFML.res.table[[datasets.list[i]]]$MUTS )
-    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no")
-    
-    ##### Get significant genes' names for the plotly add_text option
-    genes_text <- data.df$gene[ 1:length(signif_genes.datasets[[datasets.list[i]]]$OncodriveFML) ]
-    genes_text <- c(as.character(genes_text), rep(" ", nrow(data.df)-length(genes_text)))
-    
-    ##### Calculate x and y axis rangeby adding 10% of the original range
-    x_range <- c(0, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
-    y_range <- c(0, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
-     
-    ##### Generate scatter-plot
-    widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
-      add_text(textfont = list(size = 10), textposition = "top", text=genes_text) %>%
-      add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
-      layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
-    
-    ##### Save the plot as html (PLOTLY)
-    saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_oncodriveFML_plotly_", datasets.list[i], ".html"), selfcontained = TRUE)
-  } else {
-      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
-  }
-}
-
-##### Detach plotly package. Otherwise it clashes with other graphics devices
-detach("package:plotly", unload=FALSE)
-
-##### Print a list of htmlwidgets
-widges.list
-```
-
-***
-
-###### Significant cancer genes
-
-[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for **significant cancer genes** only (`r paste(paste0("p-value < ", params$oncodrivefml_p), paste0("q-value < ", params$oncodrivefml_q), sep = ", ")`). The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for significant cancer genes (`r paste(paste0("p-value < ", params$oncodrivefml_p), paste0("q-value < ", params$oncodrivefml_q), sep = ", ")`). The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
 
 ```{r oncodriveFML_plot_interactive_signif, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
 suppressMessages(library(plotly))
@@ -1711,9 +1658,9 @@ widges.list
 
 ##### Static
 
-[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the green line and the red line are the ones with a *Q-value* between *0.25* and *0.1*.
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the <span style="color:#329457">green</span> line and the <span style="color:#ff0000">red</span> line are the ones with a *Q-value* between *0.25* and *0.1*.
 
-NOTE, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Significant cancer genes* tab to see the full list).
+<span style="color:#ff0000">NOTE</span>, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Significant cancer genes* tab to see the full list).
 
 ```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
 for ( i in 1:length(mafFiles) ) {
@@ -1754,7 +1701,7 @@ for ( i in 1:length(mafFiles) ) {
     
     widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveFML, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveFML), 'text-align' = 'center' ) %>%
-  formatRound(columns = c("P_VALUE", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
+  formatRound(columns = c("P_VALUE", "P_VALUE_EXP", "Q_VALUE", "P_VALUE_NEG", "Q_VALUE_NEG"), 6)
   } else {
     cat(paste("OncodriveFML results table \"", paste0(oncodriveFML.res[i], ".tsv"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
   }
