@@ -28,6 +28,7 @@ dependencies:
         - r-magick
         - r-rcircos
         - r-devtools
+        - r-dplyr
         - bioconductor-ensdb.hsapiens.v75
         - bioconductor-ensdb.hsapiens.v86
         - bioconductor-iranges
