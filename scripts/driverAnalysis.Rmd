@@ -15,7 +15,7 @@ params:
   maf_dir: 
   maf_files: 
   datasets: 
-  samples_id_cols: 
+  samples_id_cols: 'Tumor_Sample_Barcode'
   dnds_p: 0.05
   dnds_q: 1
   oncodriveclust_fdr: 0.5
@@ -486,6 +486,31 @@ for ( i in 1:length(mafFiles) ) {
   }
 }
 
+##### Change the column to be used to indicate samples' IDs
+if ( !is.na(params$samples_id_cols) ) {
+  samples_id_cols <- make.names(unlist(strsplit(params$samples_id_cols, split=',', fixed=TRUE)))
+  
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Check if use-defined column name exists
+    if ( samples_id_cols[i] %in% names(mafInfo[[i]]@data) && samples_id_cols[i] != "Tumor_Sample_Barcode" ) {
+      
+      ##### Change the use-defined column with samples' IDs to "Tumor_Sample_Barcode". If this column name already exist, then renames it to "Tumor_Sample_Barcode.orig"
+      maf.data <- rbind(mafInfo[[i]]@data, mafInfo[[i]]@maf.silent)
+      
+      if ( samples_id_cols[i] %in% names(maf.data) ) {
+        names(maf.data) <- gsub("Tumor_Sample_Barcode", "Tumor_Sample_Barcode.orig", names(maf.data))
+        names(maf.data) <- gsub(samples_id_cols[i], "Tumor_Sample_Barcode", names(maf.data))
+      } else {
+        cat(paste0("\nColumn \"", samples_id_cols[i], "\" does not exist in MAF file ", mafFiles[i], "!\n\n"))
+      }
+      
+      ##### Now read the data with changes column names as a maf object
+      mafInfo[[i]] <- maftools::read.maf(maf = maf.data, vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
+    }
+  }
+}
+
 ##### Read in list of genes of interest of specified
 if ( params$genes_list != "none" ){
   goi <- unique(read.table(params$genes_list, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL)[,1])
@@ -734,8 +759,8 @@ names(sel_cv) <- datasets.list
 theta <- vector("list", length(mafFiles))
 names(theta) <- datasets.list
 
-exclsamples <- vector("list", length(mafFiles))
-names(exclsamples) <- datasets.list
+hypermut_samples <- vector("list", length(mafFiles))
+names(hypermut_samples) <- datasets.list
 
 exclmuts <- vector("list", length(mafFiles))
 names(exclmuts) <- datasets.list
@@ -778,11 +803,11 @@ for ( i in 1:length(mafFiles) ) {
   ##### Record excluded (hypermutated) samples
   if (!is.null(dndsout[[i]]$exclsamples)) {
     
-    exclsamples[[i]] <- as.data.frame(dndsout[[i]]$exclsamples)
-    names(exclsamples[[i]]) <- "sampleID"
+    hypermut_samples[[i]] <- as.data.frame(dndsout[[i]]$exclsamples)
+    names(hypermut_samples[[i]]) <- "sampleID"
   } else {
-    exclsamples[[i]] <- data.frame(matrix(ncol = 1, nrow = 0))
-    names(exclsamples[[i]]) <- "sampleID"
+    hypermut_samples[[i]] <- data.frame(matrix(ncol = 1, nrow = 0))
+    names(hypermut_samples[[i]]) <- "sampleID"
   }
   
   ##### Record excluded mutations (mutations when encountering too many mutations per gene in the same sample)
@@ -818,8 +843,8 @@ for ( i in 1:length(mafFiles) ) {
 mafInfo.all <- mafInfo
 
 for ( i in 1:length(mafFiles) ) {
-  if ( nrow(exclsamples[[i]]) > 0 ) {
-    sample2keep <- unique( mafInfo[[i]]@data$Tumor_Sample_Barcode)[ unique( mafInfo[[i]]@data$Tumor_Sample_Barcode) %!in% exclsamples[[i]]$sampleID ]
+  if ( nrow(hypermut_samples[[i]]) > 0 ) {
+    sample2keep <- unique( mafInfo[[i]]@data$Tumor_Sample_Barcode)[ unique( mafInfo[[i]]@data$Tumor_Sample_Barcode) %!in% hypermut_samples[[i]]$sampleID ]
       
     ##### Extract required data from MAF
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = sample2keep, genes = NULL, fields = NULL, query = NULL, mafObj = TRUE, includeSyn = TRUE)
@@ -1194,31 +1219,31 @@ if ( params$samples_blacklist != "none" ) {
 }
 ```
 
-`r if ( length(unlist(exclsamples)) > 0 ) { c("***") }`
+`r if ( length(unlist(hypermut_samples)) > 0 ) { c("***") }`
 
-`r if ( length(unlist(exclsamples)) > 0 ) { c("#### Hypermutator samples") }`
+`r if ( length(unlist(hypermut_samples)) > 0 ) { c("#### Hypermutator samples") }`
 
-`r if ( length(unlist(exclsamples)) > 0 ) { c(paste0("Table(s) listing sample(s) with >",  params$hypermut_sample_cutoff, " coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.")) }`
+`r if ( length(unlist(hypermut_samples)) > 0 ) { c(paste0("Table(s) listing sample(s) with >",  params$hypermut_sample_cutoff, " coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.")) }`
 
 ```{r hypermutator_samples, comment = NA, message=FALSE, warning=FALSE}
 ##### Present results summary table in the html report
-if ( length(unlist(exclsamples)) > 0 ) {
+if ( length(unlist(hypermut_samples)) > 0 ) {
   
   ##### Create a list for htmlwidgets
   widges.list <- htmltools::tagList()
   
   for ( i in 1:length(mafFiles) ) {
       
-    widges.list[[i]] <- DT::datatable( data = exclsamples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclsamples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-          DT::formatStyle( columns = names(exclsamples[[i]]), 'text-align' = 'center' )
+    widges.list[[i]] <- DT::datatable( data = hypermut_samples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(hypermut_samples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+          DT::formatStyle( columns = names(hypermut_samples[[i]]), 'text-align' = 'center' )
   }
-  
-  ##### Print a list of htmlwidgets
-  widges.list
-  
-  ##### Add extra lines to make sure that this section doesn't overlap with the next one
-  cat("\n\n\n")
 }
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
 ```
 
 `r if ( params$clinical_info != "none" ) { c("***") }`
@@ -1672,6 +1697,7 @@ for ( i in 1:length(mafFiles) ) {
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
       methods <- methods[ methods %!in% "OncodriveCLUST" ]
+      runOncodriveClustChunk <- FALSE
     }
   } else {
       cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
@@ -1904,7 +1930,6 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$CGI) > 0 ) {
     
-    
     freq <- table(as.vector(signif_genes_table.datasets[[datasets.list[i]]]$CGI$gene))
     freq <- freq[ as.vector(signif_genes_table.datasets[[datasets.list[i]]]$CGI$gene) ] 
     deleterious <- signif_genes_table.datasets[[datasets.list[i]]]$CGI$deleteriuos
@@ -1916,7 +1941,7 @@ for ( i in 1:length(mafFiles) ) {
     colnames(data.df) <- c("Gene","Frequency", "Deleterious", "Consequence")
     
     ##### Generate scatter-plot
-    widges.list[[i]] <- plot_ly(data.df, x = ~Frequency, y = ~Deleterious, color = ~Consequence, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 600) %>%
+    widges.list[[i]] <- plot_ly(data.df, x = ~Frequency, y = ~Deleterious, text = ~ Gene, color = ~Consequence, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 600) %>%
         add_annotations(x = ~Frequency, y = ~Deleterious, text = ~Gene, showarrow = FALSE, font = list(color = "grey", size = 9)) %>%
         layout(title = datasets.list[i], yaxis = list(title = "CADD score (deleteriousness)"), xaxis = list(title = "Frequency"), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = TRUE, legend = list(orientation = "v", y = 0.9))
     
