@@ -2066,7 +2066,7 @@ cat("\n\n\n")
 
 ##### Bioactivities
 
-Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated alterations described as biomarkers for the selected tumor type `r if ( runcgiChunk ) { cat(paste0("(", cancer_type.cgi, ").")) } else { c(".") }`
+Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated gene-compound interactions.
 
 ```{r CGI_table_Bioactivities, comment=NA, warning=FALSE, eval=runcgiChunk}
 ##### Generate tables with CGI results
