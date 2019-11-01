@@ -30,6 +30,7 @@ params:
   oncodrivefml_p: 0.01
   oncodrivefml_q: 0.1
   oncodrivefml_conf: 'none'
+  cgi: 'none'
   clinical_info: 'none'
   remove_duplicated_variants: TRUE
   hide_code_btn: TRUE
@@ -87,7 +88,8 @@ oncodrive_analysis <- function(mafInfo, dataset, gl) {
       ##### Cluster variants based on their position to detect disease causing genes
       sig = oncodrive(maf = mafInfo, AACol = pchange, minMut = 5, pvalMethod = 'zscore')
       
-      oncodrive.plot <- plotOncodrive(res = sig, fdrCutOff = 0.05, useFraction = FALSE)
+      plotOncodrive(res = sig, fdrCutOff = 0.05, useFraction = FALSE)
+      oncodrive.plot <- recordPlot()
     }
   } else {
     sig <- NULL
@@ -512,13 +514,9 @@ if ( params$oncodrivefml != "none" ){
       
       oncodriveFML.res.table[[i]] <- read.table(paste0(oncodriveFML.res[i], ".tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
       
-    } else {
-      ##### Create empty data frame
-      oncodriveFML.res.table[[i]] <- data.frame(matrix(NA, nrow = 0, ncol = 12))
-      names(oncodriveFML.res.table[[i]]) <- c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")
+      runOncodrivefmlChunk <- TRUE
     }
   }
-  runOncodrivefmlChunk <- TRUE
 }
 
 ##### Read in OncodriveFML configuration file (https://oncodrivefml.readthedocs.io/en/latest/output.html)
@@ -532,6 +530,48 @@ if ( params$oncodrivefml_conf != "none" ){
   }
 }
 
+##### Read in CGI analysis results (https://www.cancergenomeinterpreter.org/)
+runcgiChunk <- FALSE
+
+if ( params$cgi != "none" ){
+  
+  cgi.res <- unlist(strsplit(params$cgi, split=',', fixed=TRUE))
+  
+  cgi.mut.table <- vector("list", length(mafFiles))
+  names(cgi.mut.table) <- datasets.list
+  
+  cgi.drug_pres.table <- vector("list", length(mafFiles))
+  names(cgi.drug_pres.table) <- datasets.list
+  
+  cgi.drug_pres_bio.table <- vector("list", length(mafFiles))
+  names(cgi.drug_pres_bio.table) <- datasets.list
+  
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(cgi.res[i], "/mutation_analysis.tsv")) ) {
+      
+      cgi.mut.table[[i]] <- read.table(paste0(cgi.res[i], "/mutation_analysis.tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
+      
+      ##### Keep only genes annotated as Tier 1 and Tier 2
+      cgi.mut.table[[i]] <- cgi.mut.table[[i]][ cgi.mut.table[[i]]$driver_mut_prediction %in% c("TIER 1", "TIER 2"), ]
+      runcgiChunk <- TRUE
+    }
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(cgi.res[i], "/drug_prescription.tsv")) ) {
+      
+      cgi.drug_pres.table[[i]] <- read.table(paste0(cgi.res[i], "/drug_prescription.tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
+    }
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(cgi.res[i], "/drug_prescription_bioactivities.tsv")) ) {
+      
+      cgi.drug_pres_bio.table[[i]] <- read.table(paste0(cgi.res[i], "/drug_prescription_bioactivities.tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
+    }
+  }
+}
+
 ##### Initiate a list to record sinigficant driver genes for each dataset
 signif_genes.datasets <- vector("list", length(mafFiles))
 names(signif_genes.datasets) <- datasets.list
@@ -540,11 +580,14 @@ signif_genes_table.datasets <- vector("list", length(mafFiles))
 names(signif_genes_table.datasets) <- datasets.list
 
 ##### Initiate a list to record sinigficant driver genes for each method
+methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST")
+
 if ( runOncodrivefmlChunk ) {
-  
-  methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST", "OncodriveFML")
-} else {
-  methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST")
+  methods <- c(methods, "OncodriveFML")
+}
+
+if ( runcgiChunk ) {
+  methods <- c(methods, "CGI")
 }
 
 signif_genes.methods <- vector("list", length(methods))
@@ -560,7 +603,7 @@ if ( params$samples_blacklist != "none" ) {
     exclsamples.df <- read.table(params$samples_blacklist, sep="\t", as.is=TRUE, header=TRUE, row.names=NULL)
     exclsamples <- unique(exclsamples.df[,"Tumor_Sample_Barcode"])
     
-    samples2keep <- unlist(unique( mafInfo[[i]]@maf.silent[, "Tumor_Sample_Barcode"]))[ unlist(unique(mafInfo[[i]]@maf.silent[, "Tumor_Sample_Barcode"])) %!in% exclsamples ]
+    samples2keep <- unlist(unique( mafInfo[[i]]@data[, "Tumor_Sample_Barcode"])[ unique(mafInfo[[i]]@data[, "Tumor_Sample_Barcode"]) %!in% exclsamples ])
     
     ##### Subset the maf object to exclude use-defined sample(s)
     ##### Initially don't save the subset output as maf object, as this will exlude samples with no non-synonymous mutations from the summary
@@ -801,7 +844,7 @@ for ( i in 1:length(mafFiles) ) {
   
   oncodriveClust.res[[datasets.list[i]]] <- oncodrive_analysis(mafInfo[[i]], datasets.list[i], gl) 
 
-  if ( !is.null(oncodriveClust.res[[datasets.list[i]]][[1]]) && !is.null(oncodriveClust.res[[datasets.list[i]]][[2]]) ) {
+  if ( !is.null(oncodriveClust.res[[datasets.list[i]]][[1]]) ) {
     
     ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
     oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
@@ -814,7 +857,10 @@ for ( i in 1:length(mafFiles) ) {
     rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
     
     ##### Organise the table of significant genes
-    signif_genes_table.datasets[[i]]$OncodriveCLUST <- signif_genes_table.datasets[[i]]$OncodriveCLUST[ , c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")]
+    cols <- c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")
+    cols <- cols[ cols %in% names(signif_genes_table.datasets[[i]]$OncodriveCLUST)]
+    cols <- match(cols, names(signif_genes_table.datasets[[i]]$OncodriveCLUST) )
+    signif_genes_table.datasets[[i]]$OncodriveCLUST <- subset(signif_genes_table.datasets[[i]]$OncodriveCLUST, select=cols)
     
     runOncodriveClustChunk <- TRUE
     
@@ -866,6 +912,92 @@ for ( i in 1:length(mafFiles) ) {
 }
 ```
 
+```{r cgi_load_results,  include=FALSE, eval=runcgiChunk}
+##### Create a list to store OncodriveFML info for individual datasets
+signif_genes.methods$CGI <- vector("list", length(datasets.list))
+names(signif_genes.methods$CGI) <- datasets.list
+
+###### Record results for each dataset
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Move sample name to the first column
+  col_idx <- grep("sample", names(cgi.mut.table[[i]]))
+  cgi.mut.table[[i]] <- subset(cgi.mut.table[[i]], select=c(names(cgi.mut.table[[i]])[c(col_idx, c(1:ncol(cgi.mut.table[[i]]))[-col_idx])]))
+  
+  ##### Specify the tumour type of interest
+  cancer_type.cgi <- cgi.mut.table[[i]]$cancer[1]
+  cgi.mut.table[[i]]$"driver_gene" <- factor(cgi.mut.table[[i]]$"driver_gene", levels = c(levels(cgi.mut.table[[i]]$"driver_gene"), paste0( "driver_gene ", cancer_type.cgi )))
+  cgi.mut.table[[i]]$"driver_gene"[ cgi.mut.table[[i]]$"driver_gene" == "tumor_driver"] <- paste0( "driver_gene ", cancer_type.cgi )
+  
+  ##### Keep columns of interest (as shown in CGI web results)
+  cgi.mut.table[[i]] <- cgi.mut.table[[i]][ , c("sample","hugo_symbol","protein","consequence","Pfam_domain","driver_statement","gdna","transcript","exon","mutation_location","driver_gene","gene_role","cadd_phred") ]
+  
+  ##### Change column names
+  names(cgi.mut.table[[i]]) <- gsub("hugo_symbol", "gene", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("protein", "protein change", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("Pfam_domain", "domain", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("driver_statement", "oncogenic classification", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("driver_gene", "tumour driver", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("cadd_phred", "deleteriuos", names(cgi.mut.table[[i]]))
+  names(cgi.mut.table[[i]]) <- gsub("mutation_location", "location", names(cgi.mut.table[[i]]))
+  
+  ##### Change the table levels order
+  cgi.mut.table[[i]] <- cgi.mut.table[[i]][ order( cgi.mut.table[[i]]$"tumour driver", cgi.mut.table[[i]]$"deleteriuos", cgi.mut.table[[i]]$"sample", decreasing = TRUE), ]
+  cgi.mut.table[[i]] <- cgi.mut.table[[i]][ order( cgi.mut.table[[i]]$"oncogenic classification", decreasing = FALSE), ]
+  
+  rownames(cgi.mut.table[[i]]) = NULL
+  
+  ##### Record sinigficant driver genes for each dataset
+  signif_genes.datasets[[i]]$CGI <- unique(c(as.character(cgi.mut.table[[i]]$gene)))
+  
+  ##### Remove NAs
+  signif_genes.datasets[[i]]$CGI <- signif_genes.datasets[[i]]$CGI[ !is.na(signif_genes.datasets[[i]]$CGI)]
+  
+  ##### Report significant driver genes
+  signif_genes_table.datasets[[i]]$CGI <- cgi.mut.table[[i]][ cgi.mut.table[[i]]$gene %in%  signif_genes.datasets[[i]]$CGI , ]
+  rownames(signif_genes_table.datasets[[i]]$CGI) = NULL
+  
+  ##### Record sinigficant driver genes for each dataset and method
+  signif_genes.methods$CGI[[i]] <- as.vector(signif_genes_table.datasets[[i]]$CGI$gene)
+  
+  ##### Organise the PRESCRIPTION table
+  ##### Keep only entries with TUMOR_MATCH and ALTERATION_MATCH
+  cgi.drug_pres.table[[i]] <- cgi.drug_pres.table[[i]][ cgi.drug_pres.table[[i]]$TUMOR_MATCH == 1, ]
+  cgi.drug_pres.table[[i]] <- cgi.drug_pres.table[[i]][ cgi.drug_pres.table[[i]]$ALTERATION_MATCH == "complete", ]
+  
+  ##### Keep columns of interest (as shown in CGI web results)
+  cgi.drug_pres.table[[i]] <- cgi.drug_pres.table[[i]][ , names(cgi.drug_pres.table[[i]]) %!in% c("CANCER_TYPE","ALTERATION_MATCH","TUMOR_MATCH","BIOMARKER_IDX","RESISTANCE_LIST","TESTED_TUMOR") ]
+  
+  ##### Polish content
+  names(cgi.drug_pres.table[[i]]) <- gsub("SAMPLE_ALTERATION", "ALTERATION", names(cgi.drug_pres.table[[i]]))
+  cgi.drug_pres.table[[i]]$ALTERATION <- gsub(" MUT ", " ", cgi.drug_pres.table[[i]]$ALTERATION)
+  cgi.drug_pres.table[[i]]$ALTERATION <- gsub(" MUT\\* ", " ", cgi.drug_pres.table[[i]]$ALTERATION)
+
+  ##### Change the table levels order
+  cgi.drug_pres.table[[i]] <- cgi.drug_pres.table[[i]][ order( cgi.drug_pres.table[[i]]$EVIDENCE, cgi.drug_pres.table[[i]]$SAMPLE, cgi.drug_pres.table[[i]]$EFFECT, decreasing = FALSE), ]
+  rownames(cgi.drug_pres.table[[i]]) = NULL
+  
+  ##### Organise the PRESCRIPTION BIOACTIVITIES table
+  ##### Keep only entries with MOA_MATCH and with "highly_potent" binding potency
+  cgi.drug_pres_bio.table[[i]] <- cgi.drug_pres_bio.table[[i]][ cgi.drug_pres_bio.table[[i]]$MOA_MATCH == "True", ]
+  cgi.drug_pres_bio.table[[i]] <- cgi.drug_pres_bio.table[[i]][ cgi.drug_pres_bio.table[[i]]$PACTIVITY_LABEL == "highly_potent", ]
+  
+  ##### Keep columns of interest (as shown in CGI web results)
+  cgi.drug_pres_bio.table[[i]] <- cgi.drug_pres_bio.table[[i]][ , names(cgi.drug_pres_bio.table[[i]]) %!in% c("CANCER_TYPE","MOA_MATCH") ]
+  
+  ##### Polish content
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("SAMPLE_ALTERATION", "ALTERATION", names(cgi.drug_pres_bio.table[[i]]))
+  cgi.drug_pres_bio.table[[i]]$ALTERATION <- gsub(" MUT ", " ", cgi.drug_pres_bio.table[[i]]$ALTERATION)
+  cgi.drug_pres_bio.table[[i]]$ALTERATION <- gsub(" MUT\\* ", " ", cgi.drug_pres_bio.table[[i]]$ALTERATION)
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("MOLECULE_NAME", "COMPOUND", names(cgi.drug_pres_bio.table[[i]]))
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("PACTIVITY_LABEL", "BINDING POTENCY", names(cgi.drug_pres_bio.table[[i]]))
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("PACTIVITY_MEDIAN", "BINDING P-ACTIVITY", names(cgi.drug_pres_bio.table[[i]]))
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("MOLECULE_TYPE", "TYPE", names(cgi.drug_pres_bio.table[[i]]))
+  names(cgi.drug_pres_bio.table[[i]]) <- gsub("MOLECULE_STATUS", "STATUS", names(cgi.drug_pres_bio.table[[i]]))
+  rownames(cgi.drug_pres_bio.table[[i]]) = NULL
+}
+```
+
 ```{r driver_genes_summary, comment = NA, message=FALSE, warning=FALSE}
 ##### Compute the intersections between cancer driver genes detected by various methods
 signif_genes.upset <- vector("list", length(mafFiles))
@@ -903,7 +1035,20 @@ for ( i in 1:length(mafFiles) ) {
     ##### Add column with summarised counts for each gene and organise the intersections summary table
     signif_genes.upset.mod[[i]] <- as.data.frame(t(signif_genes.upset[[i]]))
     signif_genes.upset.mod[[i]]$Total <- rowSums( signif_genes.upset.mod[[i]] )
-    signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "Total"], signif_genes.upset.mod[[i]][, "dNdScv"], signif_genes.upset.mod[[i]][, "dNdSloc"], signif_genes.upset.mod[[i]][, "OncodriveCLUST"], decreasing = TRUE),  ] 
+    
+    if ( runcgiChunk ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "CGI"], decreasing = TRUE),  ] 
+    }
+    
+    if ( runOncodrivefmlChunk ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ] 
+    }
+    
+    if ( runOncodriveClustChunk ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUST"], decreasing = TRUE),  ] 
+    }
+
+    signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "Total"], signif_genes.upset.mod[[i]][, "dNdScv"], signif_genes.upset.mod[[i]][, "dNdSloc"], decreasing = TRUE),  ] 
     
     for ( j in 1:length(signif_genes.datasets[[i]])) {
     
@@ -981,7 +1126,7 @@ Table(s) with basic information about each dataset based on data in correspondin
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- DT::datatable( data = mafInfo.all[[i]]@summary, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "none", extensions = 'Buttons', options = list(pageLength = nrow(mafInfo.all[[i]]@summary), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis')) ) %>%
+  widges.list[[i]] <- DT::datatable( data = mafInfo.all[[i]]@summary, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "none", extensions = 'Buttons', options = list(pageLength = nrow(mafInfo.all[[i]]@summary), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis')), width = 800,  escape = FALSE ) %>%
         DT::formatStyle( columns = names(mafInfo.all[[i]]@summary), 'text-align' = 'center' )
 }
 
@@ -1013,8 +1158,8 @@ for ( i in 1:length(mafFiles) ) {
 ##### Print a list of htmlwidgets
 widges.list
 
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
 ```
 
 `r if ( !is.null(MAF_samples.silent.df) ) { c("***") }`
@@ -1057,20 +1202,23 @@ if ( params$samples_blacklist != "none" ) {
 
 ```{r hypermutator_samples, comment = NA, message=FALSE, warning=FALSE}
 ##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-    
-  widges.list[[i]] <- DT::datatable( data = exclsamples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclsamples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(exclsamples[[i]]), 'text-align' = 'center' )
+if ( length(unlist(exclsamples)) > 0 ) {
+  
+  ##### Create a list for htmlwidgets
+  widges.list <- htmltools::tagList()
+  
+  for ( i in 1:length(mafFiles) ) {
+      
+    widges.list[[i]] <- DT::datatable( data = exclsamples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclsamples[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+          DT::formatStyle( columns = names(exclsamples[[i]]), 'text-align' = 'center' )
+  }
+  
+  ##### Print a list of htmlwidgets
+  widges.list
+  
+  ##### Add extra lines to make sure that this section doesn't overlap with the next one
+  cat("\n\n\n")
 }
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
 ```
 
 `r if ( params$clinical_info != "none" ) { c("***") }`
@@ -1120,7 +1268,7 @@ widges.list
 
 `r if ( params$genes_blacklist != "none" ) { c("***") }`
 
-`r if ( params$genes_blacklist != "none" ) { c("##### Excluded genes") }`
+`r if ( params$genes_blacklist != "none" ) { c("#### Excluded genes") }`
 
 `r if ( params$genes_blacklist != "none" ) { c("List of genes excluded from the analysis.") }`
 
@@ -1142,6 +1290,8 @@ if ( params$genes_blacklist != "none" ) {
 Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
 
 <span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
+
+***
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -1183,8 +1333,8 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 * Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
 * Maximum mutations per gene in same sample: **`r params$max_muts_per_gene`**
 * Mutations per gene to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
-* P-value threshold for reporting significant genes: **`r params$dnds_p`**
-* Q-value threshold for reporting significant genes: **`r params$dnds_q`**
+* P-value threshold for reporting cancer driver genes: **`r params$dnds_p`**
+* Q-value threshold for reporting cancer driver genes: **`r params$dnds_q`**
 
 **Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) are removed and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample are subsampled to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
 
@@ -1303,7 +1453,7 @@ widges.list
 
 ***
 
-#### Significant cancer genes {.tabset}
+#### Cancer driver genes {.tabset}
 
 ##### dNdScv
 
@@ -1459,6 +1609,8 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 <span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
 
+***
+
 <details>
 <summary>Variants consequence definitions</summary>
 <font size="2">
@@ -1473,7 +1625,7 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 <summary>Input parameters</summary>
 <font size="2">
 
-* False discovery rate (FDR) threshold for reporting significant genes: **`r params$oncodriveclust_fdr`**
+* False discovery rate (FDR) threshold for reporting cancer driver genes: **`r params$oncodriveclust_fdr`**
 
 </font> 
 </details>
@@ -1519,6 +1671,7 @@ for ( i in 1:length(mafFiles) ) {
     
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
+      methods <- methods[ methods %!in% "OncodriveCLUST" ]
     }
   } else {
       cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
@@ -1534,7 +1687,7 @@ widges.list
 
 ***
 
-#### Significant cancer genes
+#### Cancer driver genes
 
 Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR) values*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
@@ -1587,8 +1740,8 @@ cat("\n\n\n")
 <summary>Input parameters</summary>
 <font size="2">
 
-* P-value threshold for reporting significant genes: **`r params$oncodrivefml_p`**
-* Q-value threshold for reporting significant genes: **`r params$oncodrivefml_q`**
+* P-value threshold for reporting cancer driver genes: **`r params$oncodrivefml_p`**
+* Q-value threshold for reporting cancer driver genes: **`r params$oncodrivefml_q`**
 
 </font> 
 </details>
@@ -1599,7 +1752,7 @@ cat("\n\n\n")
 
 ##### Interactive
 
-[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for significant cancer genes (`r paste(paste0("p-value < ", params$oncodrivefml_p), paste0("q-value < ", params$oncodrivefml_q), sep = ", ")`). The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values* for cancer driver genes (`r paste(paste0("p-value < ", params$oncodrivefml_p), paste0("q-value < ", params$oncodrivefml_q), sep = ", ")`). The *size* of the points is proportional to *number of mutations* found in the dataset for individual genes. The *colour* scale reflects -log10 *q-values*, with black indicating genomic elements for which the number of mutated samples does not reach the minimum required to perform multiple test correction.
 
 ```{r oncodriveFML_plot_interactive_signif, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
 suppressMessages(library(plotly))
@@ -1660,7 +1813,7 @@ widges.list
 
 [Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. The genomic elements that have a lighter colour are the ones for which the number of mutated samples does not reach the minimum required to perform multiple test correction. All genomic regions above the red line are annotated and represent those with *Q-value* below *0.1*. The ones between the <span style="color:#329457">green</span> line and the <span style="color:#ff0000">red</span> line are the ones with a *Q-value* between *0.25* and *0.1*.
 
-<span style="color:#ff0000">NOTE</span>, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Significant cancer genes* tab to see the full list).
+<span style="color:#ff0000">NOTE</span>, in case of very long list of detected driver genes only 50 with the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Cancer driver genes* tab to see the full list).
 
 ```{r oncodriveFML_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodrivefmlChunk}
 for ( i in 1:length(mafFiles) ) {
@@ -1685,7 +1838,7 @@ for ( i in 1:length(mafFiles) ) {
 
 ***
 
-#### Significant cancer genes
+#### Cancer driver genes
 
 Table(s) presenting per-dataset [OncodriveFML](https://oncodrivefml.readthedocs.io/en/latest/oncodriveFML.html){target="_blank"} results, including *p-values*, *q-values*, as well as the *number of mutations* that are *SNPs*, multi nucleotide polymorphisms (*MNPs*) and insertions or deletions (*INDELS*).
 
@@ -1732,10 +1885,207 @@ cat("\n\n\n")
 
 ***
 
-### Cancer Genome Interpreter {.tabset}
+### CGI {.tabset}
 
-... work in progress
+[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org){target="_blank"} (CGI) is a method able to flag validated oncogenic alterations and predict cancer drivers among mutations of unknown significance (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813)). Additionally, it flags genomic biomarkers of drug response with different levels of clinical relevance.
 
+[CGI](https://www.cancergenomeinterpreter.org){target="_blank"} results are **`r if ( runcgiChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
+
+#### Plot
+
+Scatter-plot with *y-axis* presenting [CADD scores](https://asia.ensembl.org/info/genome/variation/prediction/protein_function.html){target="_blank"} and *x-axis* the alteraions freuqnecy of individual genes across samples. The *colour* indicates the consequence of corresponding alterations.
+
+```{r CGI_plot, comment = NA, message=FALSE, warning=FALSE, eval=runcgiChunk}
+suppressMessages(library(plotly))
+
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$CGI) > 0 ) {
+    
+    
+    freq <- table(as.vector(signif_genes_table.datasets[[datasets.list[i]]]$CGI$gene))
+    freq <- freq[ as.vector(signif_genes_table.datasets[[datasets.list[i]]]$CGI$gene) ] 
+    deleterious <- signif_genes_table.datasets[[datasets.list[i]]]$CGI$deleteriuos
+    names(deleterious) <- signif_genes_table.datasets[[datasets.list[i]]]$CGI$gene
+    consequence <- as.vector(signif_genes_table.datasets[[datasets.list[i]]]$CGI$consequence)
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(freq, deleterious, consequence )
+    colnames(data.df) <- c("Gene","Frequency", "Deleterious", "Consequence")
+    
+    ##### Generate scatter-plot
+    widges.list[[i]] <- plot_ly(data.df, x = ~Frequency, y = ~Deleterious, color = ~Consequence, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 600) %>%
+        add_annotations(x = ~Frequency, y = ~Deleterious, text = ~Gene, showarrow = FALSE, font = list(color = "grey", size = 9)) %>%
+        layout(title = datasets.list[i], yaxis = list(title = "CADD score (deleteriousness)"), xaxis = list(title = "Frequency"), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = TRUE, legend = list(orientation = "v", y = 0.9))
+    
+  } else {
+      cat(paste("None of the mutated genes were annotated as cancer driver genes in dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Detach plotly package. Otherwise it clashes with other graphics devices
+detach("package:plotly", unload=FALSE)
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+***
+
+#### Cancer driver genes
+
+Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"} annotations of validated oncogenic alterations and cancer driver genes.
+
+```{r CGI_table, comment=NA, warning=FALSE, eval=runcgiChunk}
+##### Generate tables with CGI results
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the CGI results plot (HTML) exists
+  if ( nrow(signif_genes_table.datasets[[i]]$CGI) > 0 ) {
+    
+    ##### Define colours for CADD scores
+    brks <- quantile(signif_genes_table.datasets[[i]]$CGI$deleteriuos, probs = seq(.05, .95, .05), na.rm = TRUE)
+    clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
+        {paste0("rgb(255,", ., ",", ., ")")}
+  
+    ##### Attach links to Gene cards
+    CGI.table <- signif_genes_table.datasets[[i]]$CGI
+    CGI.table$gene <- paste0("<a href='https://www.genecards.org/cgi-bin/carddisp.pl?gene=", CGI.table$gene, "' target='_blank'>", CGI.table$gene, "</a>")
+    
+    widges.list[[i]] <- DT::datatable(data = CGI.table, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 0), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+      DT::formatStyle( columns = names(CGI.table), 'text-align' = 'center' ) %>%
+      DT::formatStyle(columns = "deleteriuos", 
+                      backgroundColor = DT::styleInterval(brks, clrs)) %>%
+      DT::formatStyle( columns = "oncogenic classification", color = "green")
+    
+  } else {
+    cat(paste("CGI results table \"", paste0(cgi.res[i], "/mutation_analysis.tsv"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+<details>
+<summary>Table legend</summary>
+<font size="2">
+
+* **oncogenic classifiaction** - oncogenic potential of the mutation
+* **location** - location of the mutation in realtion to the last exon of the gene
+* **tumour driver** - the gene has been identified as a driver of cancer
+* **deleterious** -  [CADD](https://asia.ensembl.org/info/genome/variation/prediction/protein_function.html){target="_blank"} deleteriouslness score
+
+</font> 
+</details>
+
+***
+
+#### Prescriptions {.tabset}
+
+##### Biomarkers
+
+Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated alterations described as biomarkers for the selected tumor type `r if ( runcgiChunk ) { cat(paste0("(", cancer_type.cgi, ").")) } else { c(".") }`
+
+```{r CGI_table_Biomarkers, comment=NA, warning=FALSE, eval=runcgiChunk}
+##### Generate tables with CGI results
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the CGI results plot (HTML) exists
+  if ( nrow(cgi.drug_pres.table[[i]]) > 0 ) {
+
+    widges.list[[i]] <- DT::datatable(data = cgi.drug_pres.table[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 0), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+      DT::formatStyle( columns = names(cgi.drug_pres.table[[i]]), 'text-align' = 'center' ) %>%
+      DT::formatStyle( columns = "EFFECT", 
+                      backgroundColor = DT::styleEqual(c("Responsive", "No Responsive", "Resistant"), c("lightgreen", "red", "red"))) %>%
+      DT::formatStyle( columns = "EVIDENCE", color = DT::styleEqual(c("Early trials", "Pre-clinical"), c("green", "blue"))) %>%
+      DT::formatStyle( columns = "ALTERATION", color = "green")
+
+  } else {
+    cat(paste("CGI results table \"", paste0(cgi.res[i], "/drug_prescription.tsv"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+<details>
+<summary>Table legend</summary>
+<font size="2">
+
+* **ALTERATION** - alterations observed in genes described to affect the response to a drug
+* **DRUG** - drugs influenced by the biomarker
+* **EFFECT** - how the presence of the biomarker affects the response to the drug
+* **RESISTANCE_TYPE** -  co-occurring alteraion that confers to the same drug
+* **EVIDENCE** -  the level of evidence that supports the described biomarker
+
+</font> 
+</details>
+
+***
+
+##### Bioactivities
+
+Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated alterations described as biomarkers for the selected tumor type `r if ( runcgiChunk ) { cat(paste0("(", cancer_type.cgi, ").")) } else { c(".") }`
+
+```{r CGI_table_Bioactivities, comment=NA, warning=FALSE, eval=runcgiChunk}
+##### Generate tables with CGI results
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the CGI results plot (HTML) exists
+  if ( nrow(cgi.drug_pres_bio.table[[i]]) > 0 ) {
+
+    ##### Attach links to ChEMBL
+    cgi.drug_pres_bio.table[[i]]$MOLECULE_NAME <- paste0("<a href='https://www.ebi.ac.uk/chembl/compound_report_card/", cgi.drug_pres_bio.table[[i]]$MOLECULE_NAME, "' target='_blank'>", cgi.drug_pres_bio.table[[i]]$MOLECULE_NAME, "</a>")
+  
+    widges.list[[i]] <- DT::datatable(data = cgi.drug_pres_bio.table[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 0), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+      DT::formatStyle( columns = names(cgi.drug_pres_bio.table[[i]]), 'text-align' = 'center' ) %>%
+      DT::formatStyle( columns = "ALTERATION", color = "green") %>%
+      DT::formatRound(columns = c("BINDING P-ACTIVITY"), 2)
+
+  } else {
+    cat(paste("CGI results table \"", paste0(cgi.res[i], "/drug_prescription_bioactivities.tsv"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+<details>
+<summary>Table legend</summary>
+<font size="2">
+
+* **COMPOUND** - compound interacting with the gene bearing driver alterations
+* **BINDING POTENCY** - potency of binding between the compound and the altered gene label
+* **MOA** - compound mechanism of action
+* **BINDING P-ACTIVITY** -  median binding p-activity value
+* **TYPE** -  compound molecule type
+* **TYPE** -  compound clinical status of approval
+
+</font> 
+</details>
 
 ***
 
@@ -1895,6 +2245,36 @@ if ( pchangeStatus ) {
 }
 ```
 
+`r if ( runcgiChunk ) { c("### CGI {.tabset}") } else { c(" ") }`
+
+```{r lollipop_plots_CGI, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runcgiChunk}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  genes <- unique(verify_genes(unlist(signif_genes.methods$CGI)))
+  
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$CGI)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
+
+} else {
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
+}
+```
+
 ## Mutations annotation {.tabset}
 
 Table(s) with detailed annotation of **coding mutations** (detected by the following methods: **`r paste(methods, collapse = ", ")`**) in affected samples.
@@ -2000,6 +2380,34 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   
   annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveFML[[i]], ]
+  
+  ##### Move gene name to the first column
+  col_idx <- grep("gene", names(annotmuts))
+  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
+  
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
+
+`r if ( runcgiChunk ) { c("### CGI") } else { c(" ") }`
+
+```{r mutations_annotation_CGI, comment = NA, message=FALSE, warning=FALSE, eval=runcgiChunk}
+##### Present results summary table in the html report
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$CGI[[i]], ]
   
   ##### Move gene name to the first column
   col_idx <- grep("gene", names(annotmuts))
@@ -2206,6 +2614,48 @@ widges.list
 cat("\n\n\n")
 ```
 
+`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
+
+`r if ( runcgiChunk ) { c("### CGI {.tabset .tabset-fade}") } else { c(" ") }`
+
+`r if ( runcgiChunk ) { c("#### Non-synonymous") } else { c(" ") }`
+
+```{r details_mut_CGI_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runcgiChunk}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$CGI[[i]], type = "nonsynonymous")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
+
+`r if ( runcgiChunk ) { c("#### Silent") } else { c(" ") }`
+
+```{r details_mut_CGI_silent, comment = NA, message=FALSE, warning=FALSE, eval = runcgiChunk}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$CGI[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
 ***
 
 ## Summary {.tabset}
@@ -2223,6 +2673,9 @@ for ( i in 1:length(mafFiles) ) {
   
   if ( length(signif_genes[[i]]) > 0 ) {
     
+    ##### Attach links to Gene cards
+    rownames(signif_genes.upset.mod[[i]]) <- paste0("<a href='https://www.genecards.org/cgi-bin/carddisp.pl?gene=", rownames(signif_genes.upset.mod[[i]]), "' target='_blank'>", rownames(signif_genes.upset.mod[[i]]), "</a>")
+  
     ##### Generate a table
     widges.list[[i]] <- DT::datatable( data = signif_genes.upset.mod[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", rownames = TRUE, extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 1), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
       DT::formatStyle( columns = colnames(signif_genes.upset.mod[[i]]), `font-size` = '12px', 'text-align' = 'center' ) %>%
