@@ -78,7 +78,7 @@ For more details about [installation](OncodriveFML.md#installation), [data downl
 
 [Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org) (CGI), see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details.
 
-This tool is freely available through an API or a web interface at [http://www.cancergenomeinterpreter.org](http://www.cancergenomeinterpreter.org). 
+This tool is freely available through a web interface at [http://www.cancergenomeinterpreter.org](http://www.cancergenomeinterpreter.org). 
 
 The CGI resource can also be accessed programmatically by an API created via REST. Only registered users can make use of the API, since a token is needed for any communication between the end user and the REST API. Further details can be found at [https://www.cancergenomeinterpreter.org/api/v1](https://www.cancergenomeinterpreter.org/rest_api) and information about acceptable input format can be found at [https://www.cancergenomeinterpreter.org/formats](https://www.cancergenomeinterpreter.org/formats).
 
