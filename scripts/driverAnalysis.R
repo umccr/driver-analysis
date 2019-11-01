@@ -19,6 +19,7 @@
 #   maf_dir:      Directory with MAF files
 #   maf_files:    List of MAF files to be processed. Each file name is expected to be separated by comma
 #   datasets:     Desired names of each dataset. The names are expected to be in the same order as provided MAF files and should be separated by comma
+#   samples_id_cols:  The name(s) of MAF file(s) column containing samples' IDs. One column name is expected for a single file, and each separated by comma. The defualt samples' ID column is "Tumor_Sample_Barcode"
 #   dnds_p:       dNdS method p-value threshold for reporting significant genes (defualt 0.05)
 #   dnds_q:       dNdS method q-value threshold for reporting significant genes (defualt 1)
 #   oncodriveclust_fdr:   OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt 0.5)
@@ -65,6 +66,8 @@ option_list <- list(
               help="List of MAF files to be processed"),
   make_option("--datasets", action="store", default=NA, type='character',
               help="Desired names of each dataset"),
+  make_option("--samples_id_cols", action="store", default=NA, type='character',
+              help="The name(s) of MAF file(s) column containing samples' IDs"),
   make_option("--dnds_p", action="store", default=0.05, type='double',
               help="dNdS method p-value threshold for reporting significant genes"),
   make_option("--dnds_q", action="store", default=1, type='double',
@@ -127,6 +130,13 @@ if (is.na(opt$maf_dir) || is.na(opt$maf_files) || is.na(opt$datasets) ) {
   q()
 }
 
+if ( !is.na(opt$samples_id_cols) && length(unlist(strsplit(opt$maf_files, split=',', fixed=TRUE))) != length(unlist(strsplit(opt$samples_id_cols, split=',', fixed=TRUE))) ) {
+  
+  cat("\nMake sure that the number of samples' ID columns match the number of queried MAF files\n\n")
+  
+  q()
+}
+
 ##### Pre-define list of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants. Default uses Variant Classifications with High/Moderate variant consequences (http://asia.ensembl.org/Help/Glossary?id=535)
 if ( is.na(opt$nonSyn_list) ) {
   opt$nonSyn_list<- c("Frame_Shift_Del","Frame_Shift_Ins","Splice_Site","Translation_Start_Site","Nonsense_Mutation", "Nonstop_Mutation", "In_Frame_Del","In_Frame_Ins", "Missense_Mutation")
@@ -148,7 +158,7 @@ if ( opt$ucsc_genome_assembly == 19 ) {
 }
 
 ##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_file = paste0(opt$out_folder, ".html"), output_dir = paste(opt$maf_dir, opt$out_folder, sep = "/"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, dnds_p = opt$dnds_p, dnds_q = opt$dnds_q, oncodriveclust_fdr = opt$oncodriveclust_fdr, ratios_ci = opt$ratios_ci, hypermut_sample_cutoff = opt$hypermut_sample_cutoff, max_muts_per_gene = opt$max_muts_per_gene, ucsc_genome_assembly = opt$ucsc_genome_assembly, out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, cgi = opt$cgi, clinical_info = opt$clinical_info, remove_duplicated_variants = opt$remove_duplicated_variants, hide_code_btn = opt$hide_code_btn, ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), ensembl_version = as.numeric(ensembl_version) ))
+rmarkdown::render(input = "driverAnalysis.Rmd", output_file = paste0(opt$out_folder, ".html"), output_dir = paste(opt$maf_dir, opt$out_folder, sep = "/"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, samples_id_cols = opt$samples_id_cols, dnds_p = opt$dnds_p, dnds_q = opt$dnds_q, oncodriveclust_fdr = opt$oncodriveclust_fdr, ratios_ci = opt$ratios_ci, hypermut_sample_cutoff = opt$hypermut_sample_cutoff, max_muts_per_gene = opt$max_muts_per_gene, ucsc_genome_assembly = opt$ucsc_genome_assembly, out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, cgi = opt$cgi, clinical_info = opt$clinical_info, remove_duplicated_variants = opt$remove_duplicated_variants, hide_code_btn = opt$hide_code_btn, ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), ensembl_version = as.numeric(ensembl_version) ))
 
 ##### Remove the assocaited MD file and the redundant folder with plots that are imbedded in the HTML report
 unlink(paste0(opt$maf_dir, "/", opt$out_folder, "_files"), recursive = TRUE)

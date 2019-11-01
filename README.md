@@ -134,6 +134,7 @@ Argument | Description | Required
 --maf_dir | Directory with *MAF* file(s) | **Yes**
 --maf_files | List of *MAF* file(s) to be processed. Each file name is expected to be separated by comma | **Yes**
 --datasets | Desired names of each dataset. The names are expected to be in the same order as provided *MAF* files | **Yes**
+--samples_id_cols | The name(s) of MAF file(s) column containing samples' IDs. One column name is expected for a single file, and each separated by comma. The defualt samples' ID column is `Tumor_Sample_Barcode` | No
 --dnds_p | dN/dS method p-value threshold for reporting significant genes (defualt is `0.05`) | No
 --dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `1`) | No
 --oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`) | No
