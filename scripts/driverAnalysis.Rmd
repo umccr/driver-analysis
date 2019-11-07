@@ -863,7 +863,9 @@ names(oncodriveClust.res) <- datasets.list
 
 signif_genes.methods$OncodriveCLUST <- vector("list", length(datasets.list))
 names(signif_genes.methods$OncodriveCLUST) <- datasets.list
-  
+
+runOncodriveClustChunk <- FALSE
+
 ###### Generate separate plot for each dataset
 for ( i in 1:length(mafFiles) ) {
   
@@ -881,20 +883,33 @@ for ( i in 1:length(mafFiles) ) {
     signif_genes_table.datasets[[i]]$OncodriveCLUST <- oncodriveClust.res[[datasets.list[i]]][[1]][ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr, ]
     rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
     
-    ##### Organise the table of significant genes
-    cols <- c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")
-    cols <- cols[ cols %in% names(signif_genes_table.datasets[[i]]$OncodriveCLUST)]
-    cols <- match(cols, names(signif_genes_table.datasets[[i]]$OncodriveCLUST) )
-    signif_genes_table.datasets[[i]]$OncodriveCLUST <- subset(signif_genes_table.datasets[[i]]$OncodriveCLUST, select=cols)
-    
-    runOncodriveClustChunk <- TRUE
-    
+    ##### Check if the field with AA change info is present in given MAF at all
+    if ( length(signif_genes_table.datasets[[i]]$OncodriveCLUST) != 0 ) {
+      
+      runOncodriveClustChunk <- TRUE
+      
+      ##### Check if the any of the mutated genes demonstrates significant cluster score
+      if ( nrow(signif_genes_table.datasets[[i]]$OncodriveCLUST) > 0 ) {
+        
+        ##### Organise the table of significant genes
+        cols <- c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")
+        cols <- cols[ cols %in% names(signif_genes_table.datasets[[i]]$OncodriveCLUST)]
+        cols <- match(cols, names(signif_genes_table.datasets[[i]]$OncodriveCLUST) )
+        signif_genes_table.datasets[[i]]$OncodriveCLUST <- subset(signif_genes_table.datasets[[i]]$OncodriveCLUST, select=cols)
+      } else {
+        signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
+        signif_genes.methods$OncodriveCLUST[[i]] <- NULL
+        methods <- methods[ methods %!in% "OncodriveCLUST" ]
+      }
+    } else {
+      signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
+      signif_genes.methods$OncodriveCLUST[[i]] <- NULL
+      methods <- methods[ methods %!in% "OncodriveCLUST" ]
+    }
   } else {
-    signif_genes.datasets[[i]]$OncodriveCLUST <- character()
-    signif_genes.methods$OncodriveCLUST[[i]] <- character()
-    
+    signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
+    signif_genes.methods$OncodriveCLUST[[i]] <- NULL
     methods <- methods[ methods %!in% "OncodriveCLUST" ]
-    runOncodriveClustChunk <- FALSE
   }
 }
 ```
@@ -1061,21 +1076,21 @@ for ( i in 1:length(mafFiles) ) {
     signif_genes.upset.mod[[i]] <- as.data.frame(t(signif_genes.upset[[i]]))
     signif_genes.upset.mod[[i]]$Total <- rowSums( signif_genes.upset.mod[[i]] )
     
-    if ( runcgiChunk ) {
+    if ( "CGI" %in% names(signif_genes.datasets[[i]]) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "CGI"], decreasing = TRUE),  ] 
     }
     
-    if ( runOncodrivefmlChunk ) {
+    if ( "OncodriveFML" %in% names(signif_genes.datasets[[i]]) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ] 
     }
     
-    if ( runOncodriveClustChunk ) {
+    if ( "OncodriveCLUST" %in% names(signif_genes.datasets[[i]]) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUST"], decreasing = TRUE),  ] 
     }
 
     signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "Total"], signif_genes.upset.mod[[i]][, "dNdScv"], signif_genes.upset.mod[[i]][, "dNdSloc"], decreasing = TRUE),  ] 
     
-    for ( j in 1:length(signif_genes.datasets[[i]])) {
+    for ( j in 1:length(signif_genes.datasets[[i]]) ) {
     
       signif_genes.upset.mod[[i]][ signif_genes.upset.mod[[i]][, j] == 1, j ] <- "Yes"
       signif_genes.upset.mod[[i]][ signif_genes.upset.mod[[i]][, j] == 0, j ] <- "No"
@@ -1670,7 +1685,11 @@ suppressMessages(library(plotly))
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the field with AA change info is present in given MAF at all
   if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+    
+    #### Check if the any of the mutated genes demonstrates significant cluster score
     if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) > 0 ) {
       
       ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
@@ -1697,7 +1716,6 @@ for ( i in 1:length(mafFiles) ) {
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
       methods <- methods[ methods %!in% "OncodriveCLUST" ]
-      runOncodriveClustChunk <- FALSE
     }
   } else {
       cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
@@ -1724,13 +1742,21 @@ widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   
+  ##### Check if the field with AA change info is present in given MAF at all
   if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+    
+    #### Check if the any of the mutated genes demonstrates significant cluster score
+    if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) > 0 ) {
       
-    widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-      DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUST), 'text-align' = 'center' ) %>%
-  formatRound(columns = c("clusterScores", "zscore", "fract_muts_in_clusters"), 1) %>%
-  formatRound(columns = c("pval", "fdr"), 6)
-  
+      widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUST), 'text-align' = 'center' ) %>%
+    formatRound(columns = c("clusterScores", "zscore", "fract_muts_in_clusters"), 1) %>%
+    formatRound(columns = c("pval", "fdr"), 6)
+      
+    } else {
+      cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
+      runOncodriveClustChunk <- FALSE
+    }
   } else {
     cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
   }
@@ -2018,7 +2044,7 @@ cat("\n\n\n")
 
 ##### Biomarkers
 
-Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated alterations described as biomarkers for the selected tumor type `r if ( runcgiChunk ) { cat(paste0("(", cancer_type.cgi, ").")) } else { c(".") }`
+Table(s) presenting per-dataset [CGI](https://www.cancergenomeinterpreter.org){target="_blank"}-annotated alterations described as biomarkers for the selected tumor type `r if ( runcgiChunk ) { paste0("(", cancer_type.cgi, ").") } else { c(".") }`
 
 ```{r CGI_table_Biomarkers, comment=NA, warning=FALSE, eval=runcgiChunk}
 ##### Generate tables with CGI results
