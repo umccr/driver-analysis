@@ -143,7 +143,7 @@ data="examples"
 cd $data
 
 # Run OncodriveFML using MAF from ICGC PACA-AU samples
-oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements /path/to/oncodrivefml/example/data/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-AU_oncodrivefml_analysis
+oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements /g/data3/gx8/extras/jmarzec/apps//path/to/oncodrivefml/example/data/example/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-AU_oncodrivefml_analysis
 
 # Run OncodriveFML using MAF from ICGC PACA-CA samples
 oncodrivefml --input simple_somatic_mutation.open.PACA-CA.maf --elements /g/data3/gx8/extras/jmarzec/apps//path/to/oncodrivefml/example/data/example/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-CA_oncodrivefml_analysis
@@ -157,6 +157,13 @@ oncodrivefml --input simple_somatic_mutation.open.PACA-CA.maf --elements /g/data
 
 ```
 pip install pycurl==7.43.0 --global-option=build_ext --global-option="-L/usr/local/opt/openssl/lib" --global-option="-I/usr/local/opt/openssl/include"
+```
+
+* In case of `ImportError: Something is wrong with the numpy installation. While importing we detected an older version of numpy in ['...']. One method of fixing this is to repeatedly uninstall numpy until none is found, then reinstall this version.` error message uninstall `numpy` and then re-install it using `pip` (from `python-sdk` [GitHub issues](https://github.com/transloadit/python-sdk/issues/4#issuecomment-418120668))
+
+```
+pip uninstall numpy
+pip install numpy
 ```
 
 <br />
