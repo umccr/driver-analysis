@@ -2763,9 +2763,9 @@ names(signif_genes.incl) <- datasets.list
 
 for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
-    
     data(UCSC.HG19.Human.CytoBandIdeogram)
-    cyto.info <- eval(parse( text=paste0("UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram ")))
+    eval(parse( text=paste0("data(UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram)")))
+    cyto.info <- eval(parse( text=paste0("UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram")))
     
     ##### Check if all driver genes are located in standard chromosomes
     signif_genes.excl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %!in% cyto.info$Chromosome,  ]
@@ -2782,7 +2782,7 @@ for ( i in 1:length(mafFiles) ) {
       pointsize <- 18
     }
     
-    RCircos.Set.Core.Components ( cyto.info=cyto.info, chr.exclude=NULL, tracks.inside=tracks.inside, tracks.outside=0)
+    RCircos.Set.Core.Components( cyto.info=cyto.info, chr.exclude=NULL, tracks.inside=tracks.inside, tracks.outside=0)
     
     ##### Save circos into a pdf file
     pdf(file = paste(outDir, "/driver_analysis_circos_", datasets.list[i], ".pdf", sep = ""), height = 14, width = 14, pointsize = 18) 
