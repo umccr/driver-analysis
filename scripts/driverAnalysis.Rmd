@@ -2763,7 +2763,6 @@ names(signif_genes.incl) <- datasets.list
 
 for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
-    data(UCSC.HG19.Human.CytoBandIdeogram)
     eval(parse( text=paste0("data(UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram)")))
     cyto.info <- eval(parse( text=paste0("UCSC.HG", params$ucsc_genome_assembly, ".Human.CytoBandIdeogram")))
     
