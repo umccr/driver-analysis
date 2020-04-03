@@ -37,7 +37,7 @@ Here we assume that the input MAF file is `/data/example.maf`, e-mail address is
 # Reformat MAF file to be compatible with CGI
 sed '/^#/ d' < /data/example.maf > /data/example.txt.tmp
 
-3 Rename some column names
+# Rename some column names
 sed -i.bak 's/Chromosome/chr/g' /data/example.txt.tmp
 sed -i.bak 's/Start_Position/pos/g' /data/example.txt.tmp
 sed -i.bak 's/Strand/strand/g' /data/example.txt.tmp
