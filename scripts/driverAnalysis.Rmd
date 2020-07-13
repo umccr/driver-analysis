@@ -90,6 +90,9 @@ oncodrive_analysis <- function(mafInfo, dataset, gl) {
       
       plotOncodrive(res = sig, fdrCutOff = 0.05, useFraction = FALSE)
       oncodrive.plot <- recordPlot()
+    } else {
+      sig <- NULL
+      oncodrive.plot <- NULL
     }
   } else {
     sig <- NULL
@@ -725,10 +728,17 @@ for ( i in 1:length(mafFiles) ) {
   ##### Run analysis for selected genes
   if ( params$genes_list != "none" ){
     
+    ##### If the genome build is different than hg19 then skip the covariates. This is explained in http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html and https://github.com/im3sanger/dndscv/issues/30
+    
     ##### First, check if all genes are in the RefCDS transcripts object
     RefCDSgenes <- goi[ goi %in% sapply(RefCDS, function(x) x$gene_name) ]
+      
+    if ( params$ucsc_genome_assembly == 19 ) {
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = goi, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
     
-    dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = goi, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+    } else {
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = goi, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+    }
     
     ##### Calculate confidence intervals for the dN/dS ratios per gene
     if ( params$ratios_ci ) {
@@ -741,7 +751,12 @@ for ( i in 1:length(mafFiles) ) {
     ##### First, check if all genes are in the RefCDS transcripts object
     RefCDSgenes <- genes2keep[ genes2keep %in% sapply(RefCDS, function(x) x$gene_name) ]
     
-    dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = RefCDSgenes, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+    if ( params$ucsc_genome_assembly == 19 ) {
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = RefCDSgenes, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+    
+    } else {
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = RefCDSgenes, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+    }
 
     ##### Calculate confidence intervals for the dN/dS ratios per gene
     if ( params$ratios_ci ) {
