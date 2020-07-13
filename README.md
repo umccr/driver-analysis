@@ -50,7 +50,7 @@ conda activate driver-analysis
 
 ###### Note
 
-[OncodriveFML](#oncodrivefml) has to be installed separately. The instruction for installing this tool is provided [hehe](#oncodrivefml).
+[OncodriveFML](#oncodrivefml) has to be installed separately. The instruction for installing this tool is provided [here](#oncodrivefml).
 
 ## Driver analysis tools
 
