@@ -526,6 +526,13 @@ if ( !file.exists(params$out_folder) ){
   dir.create(outDir, recursive=TRUE)
 }
 
+##### Run dNdS analysis with covariates ("cv" argument) only for data based on GRCh37/hg19 version of the human genome
+if ( params$ucsc_genome_assembly == 19 ) {
+  dNdS_cov <- TRUE
+} else{
+  dNdS_cov <- FALSE
+}
+
 ##### Read in OncodriveFML analysis results (https://oncodrivefml.readthedocs.io/en/latest/output.html)
 runOncodrivefmlChunk <- FALSE
 
@@ -731,14 +738,14 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### If the genome build is different than hg19 then skip the covariates. This is explained in http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html and https://github.com/im3sanger/dndscv/issues/30
       
-    if ( params$ucsc_genome_assembly == 19 ) {
+    if ( dNdS_cov ) {
       ##### First, check if all genes are in the RefCDS transcripts object
       RefCDSgenes <- goi[ goi %in% sapply(RefCDS, function(x) x$gene_name) ]
     
       dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = goi, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
     
     } else {
-      dndsout[[i]] <- dndscv(dndscvInfo[[i]], refdb = load(file=params$refdb_38), sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], refdb = params$refdb_38, sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
     }
     
     ##### Calculate confidence intervals for the dN/dS ratios per gene
@@ -749,14 +756,14 @@ for ( i in 1:length(mafFiles) ) {
   ##### Run analysis for all genes
   } else {
     
-    if ( params$ucsc_genome_assembly == 19 ) {
+    if ( dNdS_cov ) {
       ##### First, check if all genes are in the RefCDS transcripts object
       RefCDSgenes <- genes2keep[ genes2keep %in% sapply(RefCDS, function(x) x$gene_name) ]
     
       dndsout[[i]] <- dndscv(dndscvInfo[[i]], gene_list = RefCDSgenes, refdb = paste0("hg", as.character(params$ucsc_genome_assembly)), sm = "192r_3w", kc = "cgc81", cv = paste0("hg", as.character(params$ucsc_genome_assembly)), max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
     
     } else {
-      dndsout[[i]] <- dndscv(dndscvInfo[[i]], refdb = load(file=params$refdb_38), sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
+      dndsout[[i]] <- dndscv(dndscvInfo[[i]], refdb = params$refdb_38, sm = "192r_3w", kc = "cgc81", cv = NULL, max_muts_per_gene_per_sample = params$max_muts_per_gene, max_coding_muts_per_sample = params$hypermut_sample_cutoff, use_indel_sites = TRUE, min_indels = 5, maxcovs = 20, constrain_wnon_wspl = TRUE, outp = 3)
     }
 
     ##### Calculate confidence intervals for the dN/dS ratios per gene
@@ -808,12 +815,19 @@ for ( i in 1:length(mafFiles) ) {
     signif_genes_table.datasets[[i]]$dNdScv <- merge( signif_genes_table.datasets[[i]]$dNdScv, ci[[i]], by.x="gene_name", by.y="gene", all.x = TRUE, all.y = FALSE, sort = FALSE)
     
     ##### Organise the table of significant genes
-    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "mis_low", "mis_high", "pmis_cv", "wnon_cv", "wspl_cv", "tru_mle", "tru_low", "tru_high", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
-    
+    if ( dNdS_cov ) {
+      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "mis_low", "mis_high", "pmis_cv", "wnon_cv", "wspl_cv", "tru_mle", "tru_low", "tru_high", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
+    } else {
+      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "n_syn", "n_mis", "n_non", "n_spl", "wmis_cv", "mis_low", "mis_high", "pmis_cv", "wnon_cv", "wspl_cv", "tru_mle", "tru_low", "tru_high", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv")]
+    }
   } else {
     
     ##### Organise the table of significant genes
-    signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
+    if ( dNdS_cov ) {
+      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
+    } else {
+      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pallsubs_cv", "qallsubs_cv", "n_syn", "n_mis", "n_non", "n_spl", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv")]
+    }
   }
 
   ##### Record excluded (hypermutated) samples
@@ -1417,12 +1431,17 @@ for ( i in 1:length(mafFiles) ) {
   if ( nrow(signif_genes_table.datasets[[i]]$dNdScv) > 0 ) {
       
     ##### Avoid p-values of 0 by assigning 1*10^-16 to extremely low p-values
-    p_global <- signif_genes_table.datasets[[i]]$dNdScv$pglobal_cv
+    if ( dNdS_cov ) {
+      p_global <- signif_genes_table.datasets[[i]]$dNdScv$pglobal_cv
+      p_ind <- signif_genes_table.datasets[[i]]$dNdScv$pind_cv
+      p_ind[ p_ind == 0 ] <- 1*10^-16
+    } else {
+      p_global <- signif_genes_table.datasets[[i]]$dNdScv$pallsubs_cv
+      p_ind <- 1
+    }
     p_global[ p_global == 0 ] <- 1*10^-16
     p_subs <- signif_genes_table.datasets[[i]]$dNdScv$pallsubs_cv
     p_subs[ p_subs == 0 ] <- 1*10^-16
-    p_ind <- signif_genes_table.datasets[[i]]$dNdScv$pind_cv
-    p_ind[ p_ind == 0 ] <- 1*10^-16
     
     ##### Sum up all mutations
     mutations_no <- rowSums(signif_genes_table.datasets[[i]]$dNdScv[ , names(signif_genes_table.datasets[[i]]$dNdScv) %in% c("n_syn", "n_mis", "n_non", "n_spl", "n_ind") ])
@@ -1523,16 +1542,30 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   if ( params$ratios_ci) {
     
-    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+    if ( dNdS_cov ) {
+      widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
     formatRound(columns = c("wmis_cv","wnon_cv", "wspl_cv", "wind_cv", "mis_mle", "tru_mle", "mis_low", "tru_low", "mis_high", "tru_high"), 1) %>%
     formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "pind_cv", "qallsubs_cv", "pglobal_cv", "qglobal_cv"), 6)
+    } else {
+      widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+          DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
+    formatRound(columns = c("wmis_cv","wnon_cv", "wspl_cv", "tru_mle", "mis_low", "tru_low", "mis_high", "tru_high"), 1) %>%
+    formatRound(columns = c("pallsubs_cv", "qallsubs_cv", "pmis_cv", "ptrunc_cv"), 6)
+    }
     
   } else {
-    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+    if ( dNdS_cov ) {
+      widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+            DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
+      formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv", "wind_cv"), 1) %>%
+      formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "pind_cv"), 6)
+    } else {
+      widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$dNdScv, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$dNdScv), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
           DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$dNdScv), 'text-align' = 'center' ) %>%
-    formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv", "wind_cv"), 1) %>%
-    formatRound(columns = c("pglobal_cv", "qglobal_cv", "pmis_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "pind_cv"), 6)
+      formatRound(columns = c("wmis_cv", "wnon_cv", "wspl_cv"), 1) %>%
+      formatRound(columns = c("pallsubs_cv", "qallsubs_cv", "pmis_cv", "ptrunc_cv"), 6)
+    }
   }
 }
 
