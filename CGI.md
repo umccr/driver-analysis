@@ -33,6 +33,10 @@ To run [CGI](https://www.cancergenomeinterpreter.org/api/v1) REST API one needs 
 
 Here we assume that the input MAF file is `/data/example.maf`, e-mail address is `jacek.marzec@unimelb.edu.au`, the token is `abcd1234`, job ID is `123456789` and we refer to pancreatic cancer `PAAD`
 
+###### Note
+
+[CGI](https://www.cancergenomeinterpreter.org/) is desinged for data based on **GRCh37** genome build version. 
+
 ```
 # Reformat MAF file to be compatible with CGI
 sed '/^#/ d' < /data/example.maf > /data/example.txt.tmp
