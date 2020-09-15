@@ -35,7 +35,7 @@ Here we assume that the input MAF file is `/data/example.maf`, e-mail address is
 
 ###### Note
 
-[CGI](https://www.cancergenomeinterpreter.org/) is desinged for data based on **GRCh37** genome build version. 
+[CGI](https://www.cancergenomeinterpreter.org/) is desinged for data based on **GRCh37** coordinates. 
 
 ```
 # Reformat MAF file to be compatible with CGI
