@@ -38,8 +38,8 @@
 #   clinical_info (optional):  Location of clinical data associated with each sample in MAF. Each file name (for each dataset) is expected to be separated by comma
 #	  remove_duplicated_variants (optional):		Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? Defulat value is "FALSE"
 #   out_folder:   Name for the output folder that will be created within the directory with MAF files. If no output folder is specified the results will be saved in folder "Driver_analysis_report"
-#   hide_code_btn : Hide the "Code" button allowing to show/hide code chunks in the final HTML report. Available options are: "TRUE" (default) and "FALSE"
-#   ucsc_genome_assembly :  Human reference genome version used for signature analysis (default is "19")
+#   hide_code_btn: Hide the "Code" button allowing to show/hide code chunks in the final HTML report. Available options are: "TRUE" (default) and "FALSE"
+#   ucsc_genome_assembly:  Human reference genome version used for signature analysis (default is "19")
 #
 ################################################################################
 
@@ -153,7 +153,7 @@ if ( opt$ucsc_genome_assembly !=19 && opt$ucsc_genome_assembly !=38   ) {
 if ( opt$ucsc_genome_assembly == 19 ) {
   ensembl_version <- 75
   
-} else if ( opt$grch_version == 38 ) {
+} else if ( opt$ucsc_genome_assembly == 38 ) {
   ensembl_version <- 86
 }
 

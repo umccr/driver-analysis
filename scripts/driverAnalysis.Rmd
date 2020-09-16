@@ -47,6 +47,44 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
+***
+
+<details>
+<summary>Input parameters</summary>
+<font size="2">
+
+* **maf_dir**: `r params$maf_dir`
+* **maf_files**: `r params$maf_files`
+* **datasets**: `r params$datasets`
+* **samples_id_cols**: `r params$samples_id_cols`
+* **dnds_p**: `r params$dnds_p`
+* **dnds_q**: `r params$dnds_q`
+* **oncodriveclust_fdr**: `r params$oncodriveclust_fdr`
+* **ratios_ci**: `r params$ratios_ci`
+* **hypermut_sample_cutoff**: `r params$hypermut_sample_cutoff`
+* **max_muts_per_gene**: `r params$max_muts_per_gene`
+* **genes_list**: `r params$genes_list`
+* **genes_blacklist**: `r params$genes_blacklist`
+* **samples_blacklist**: `r params$samples_blacklist`
+* **nonSyn_list**: `r params$nonSyn_list`
+* **oncodrivefml**: `r params$oncodrivefml`
+* **oncodrivefml_p**: `r params$oncodrivefml_p`
+* **oncodrivefml_q**: `r params$oncodrivefml_q`
+* **oncodrivefml_conf**: `r params$oncodrivefml_conf`
+* **cgi**: `r params$cgi`
+* **clinical_info**: `r params$clinical_info`
+* **remove_duplicated_variants**: `r params$remove_duplicated_variants`
+* **hide_code_btn**: `r params$hide_code_btn`
+* **out_folder**: `r params$out_folder`
+* **ucsc_genome_assembly**: `r params$ucsc_genome_assembly`
+* **ensembl_version**: `r params$ensembl_version`
+* **refdb_38**: `r params$refdb_38`
+
+</font> 
+</details>
+
+***
+
 ```{r code_display, echo = FALSE}
 ##### Include or exclude the "Code" buttom allowing to "show"/"hide" code chunks from the report
 if ( params$hide_code_btn ) {
@@ -716,6 +754,12 @@ for ( i in 1:length(mafFiles) ) {
   
   dndscvInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("Tumor_Sample_Barcode", "Chromosome", "Start_Position", "Reference_Allele", "Tumor_Seq_Allele2")], mafInfo[[i]]@maf.silent[, c("Tumor_Sample_Barcode", "Chromosome", "Start_Position", "Reference_Allele", "Tumor_Seq_Allele2")])
   names(dndscvInfo[[i]]) <- c("sampleID", "chr", "pos", "ref", "mut")
+  
+  ##### Make sure that the chromosome numbers start with "chr"
+  if ( is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
+    dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
+  }
+    
 }
 ```
 
@@ -1419,7 +1463,8 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 ##### dNdScv
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. 
+`r if ( dNdS_cov ) { c("The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.") } else { c("The *colour* of the points is proportional to -log10 *p-values* based on non-synonymous substitutions without indels.") }`
 
 ```{r dndscv_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1439,6 +1484,7 @@ for ( i in 1:length(mafFiles) ) {
       p_global <- signif_genes_table.datasets[[i]]$dNdScv$pallsubs_cv
       p_ind <- 1
     }
+    
     p_global[ p_global == 0 ] <- 1*10^-16
     p_subs <- signif_genes_table.datasets[[i]]$dNdScv$pallsubs_cv
     p_subs[ p_subs == 0 ] <- 1*10^-16
@@ -1455,9 +1501,15 @@ for ( i in 1:length(mafFiles) ) {
     y_range <- c(0, max(data.df$p_global) + max(data.df$p_global)*0.1)
     
     ##### Generate scatter-plot
-    widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$p_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
-      add_text(textfont = list(size = 10), textposition = "top") %>%
-      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+    if ( dNdS_cov ) {
+      widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$p_global, color = data.df$p_ind, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+    } else {
+      widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$p_global, color = data.df$p_subs, size = data.df$p_subs, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))      
+    }
     
     ##### Save the plot as html (PLOTLY)
     saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_dndscv_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
