@@ -22,6 +22,8 @@
 #   samples_id_cols:  The name(s) of MAF file(s) column containing samples' IDs. One column name is expected for a single file, and each separated by comma. The defualt samples' ID column is "Tumor_Sample_Barcode"
 #   dnds_p:       dNdS method p-value threshold for reporting significant genes (defualt 0.05)
 #   dnds_q:       dNdS method q-value threshold for reporting significant genes (defualt 1)
+#   activedriver_p:       ActiveDriverWGS method p-value threshold for reporting significant genes (defualt 0.05)
+#   activedriver_fdr:       ActiveDriverWGS method FDR-value threshold for reporting significant genes (defualt 1)
 #   oncodriveclust_fdr:   OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt 0.5)
 #   ratios_ci:    Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
 #   hypermut_sample_cutoff:   Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 1000)
@@ -72,6 +74,10 @@ option_list <- list(
               help="dNdS method p-value threshold for reporting significant genes"),
   make_option("--dnds_q", action="store", default=1, type='double',
               help="dNdS method q-value threshold for reporting significant genes"),
+  make_option("--activedriver_p", action="store", default=0.05, type='double',
+              help="ActiveDriverWGS method p-value threshold for reporting significant genes"),
+  make_option("--activedriver_fdr", action="store", default=1, type='double',
+              help="ActiveDriverWGS method FDR value threshold for reporting significant genes"),
   make_option("--oncodriveclust_fdr", action="store", default=0.5, type='double',
               help="OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes"),
   make_option("--ratios_ci", action="store", default=FALSE, type='logical',
@@ -157,8 +163,43 @@ if ( opt$ucsc_genome_assembly == 19 ) {
   ensembl_version <- 86
 }
 
-##### Pass the user-defined argumentas to the driverAnalysis.R markdown script and run the analysis
-rmarkdown::render(input = "driverAnalysis.Rmd", output_file = paste0(opt$out_folder, ".html"), output_dir = paste(opt$maf_dir, opt$out_folder, sep = "/"), params = list(maf_dir = opt$maf_dir, maf_files = opt$maf_files, datasets = opt$datasets, samples_id_cols = opt$samples_id_cols, dnds_p = opt$dnds_p, dnds_q = opt$dnds_q, oncodriveclust_fdr = opt$oncodriveclust_fdr, ratios_ci = opt$ratios_ci, hypermut_sample_cutoff = opt$hypermut_sample_cutoff, max_muts_per_gene = opt$max_muts_per_gene, ucsc_genome_assembly = opt$ucsc_genome_assembly, out_folder = opt$out_folder, genes_list = opt$genes_list, genes_blacklist = opt$genes_blacklist, samples_blacklist = opt$samples_blacklist, nonSyn_list = opt$nonSyn_list, oncodrivefml = opt$oncodrivefml, oncodrivefml_p = opt$oncodrivefml_p, oncodrivefml_q = opt$oncodrivefml_q, oncodrivefml_conf = opt$oncodrivefml_conf, cgi = opt$cgi, clinical_info = opt$clinical_info, remove_duplicated_variants = opt$remove_duplicated_variants, hide_code_btn = opt$hide_code_btn, ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly), ensembl_version = as.numeric(ensembl_version) ))
+
+##### Collect parameters
+
+param_list <- list(maf_dir = opt$maf_dir,
+                   maf_files = opt$maf_files,
+                   datasets = opt$datasets,
+                   samples_id_cols = opt$samples_id_cols,
+                   dnds_p = opt$dnds_p,
+                   dnds_q = opt$dnds_q,
+                   activedriver_p = opt$activedriver_p,
+                   activedriver_fdr = opt$activedriver_fdr,
+                   oncodriveclust_fdr = opt$oncodriveclust_fdr,
+                   ratios_ci = opt$ratios_ci,
+                   hypermut_sample_cutoff = opt$hypermut_sample_cutoff,
+                   max_muts_per_gene = opt$max_muts_per_gene,
+                   ucsc_genome_assembly = opt$ucsc_genome_assembly,
+                   out_folder = opt$out_folder,
+                   genes_list = opt$genes_list,
+                   genes_blacklist = opt$genes_blacklist,
+                   samples_blacklist = opt$samples_blacklist,
+                   nonSyn_list = opt$nonSyn_list,
+                   oncodrivefml = opt$oncodrivefml,
+                   oncodrivefml_p = opt$oncodrivefml_p,
+                   oncodrivefml_q = opt$oncodrivefml_q,
+                   oncodrivefml_conf = opt$oncodrivefml_conf,
+                   cgi = opt$cgi, clinical_info = opt$clinical_info,
+                   remove_duplicated_variants = opt$remove_duplicated_variants,
+                   hide_code_btn = opt$hide_code_btn,
+                   ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly),
+                   ensembl_version = as.numeric(ensembl_version)
+)
+
+##### Pass the user-defined argumentas to the summariseMAFs.R markdown script and run the analysis
+rmarkdown::render(input = "driverAnalysis.Rmd",
+                  output_dir = paste(opt$maf_dir, opt$out_folder, sep = "/"),
+                  output_file = paste0(opt$out_folder, ".html"),
+                  params = param_list)
 
 ##### Remove the assocaited MD file and the redundant folder with plots that are imbedded in the HTML report
 unlink(paste0(opt$maf_dir, "/", opt$out_folder, "_files"), recursive = TRUE)
