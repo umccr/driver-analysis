@@ -30,3 +30,41 @@ conda convert -p osx-64 /path/to/miniconda/envs/cbuild/conda-bld/linux-64/r-dnds
 # Upload created conda package to https://anaconda.org
 anaconda upload /path/to/miniconda/envs/cbuild/conda-bld/osx-64/r-dndscv-0.0.0.9-r35_0.tar.bz2
 
+
+##################################################
+#
+#	ActiveDriverWGSR
+#
+##################################################
+
+# Create a conda environment to build the package in
+conda create -n activedriverwgsr -c conda-forge -c defaults conda-build anaconda-client conda-verify python=3.6
+
+
+# Activate the environment
+conda activate activedriverwgsr
+
+# Since the GitHub repo does not have tag one needs to fork it from the origial repository (https://github.com/reimandlab/ActiveDriverWGSR), create the tag and push to own GitHub (https://github.com/JMarzec/ActiveDriverWGSR)
+cd [directory/for/ActiveDriverWGSR]
+git clone git@github.com:JMarzec/ActiveDriverWGSR.git
+cd ActiveDriverWGSR
+git tag -a v1.1.1 -m "version v1.1.1"
+git push --tags
+
+# Build conda package. This goes through all of the dependencies and their dependencies and searches for them in the conda-forge and bioconda Conda channels. The conda skeleton cran command automatically pulls the latest tag
+conda skeleton cran https://github.com/JMarzec/ActiveDriverWGSR.git
+
+# Need to fix list of dependencies in created /path/to/miniconda/envs/r-activedriverwgsr/meta.yaml and change "r-biostrings" to "bioconductor-biostrings", "r-bsgenome.hsapiens.ucsc.hg19" to "bioconductor-bsgenome.hsapiens.ucsc.hg19", "r-genomeinfodb" to "bioconductor-genomeinfodb", "r-iranges" to "bioconductor-iranges", "r-s4vectors" to "bioconductor-s4vectors", "r-genomicranges" to "bioconductor-genomicranges" and "r-bsgenome" to "bioconductor-bsgenome" in two places (host and run sections)
+
+# Now build the package
+conda build -c conda-forge -c bioconda r-activedriverwgsr
+
+# Upload created conda package to https://anaconda.org
+anaconda upload /path/to/miniconda/envs/cbuild/conda-bld/linux-64/r-activedriverwgs-1.1.1-r35_0.tar.bz2
+
+# Convert package to MacOS
+conda convert -p osx-64 /path/to/miniconda/envs/cbuild/conda-bld/linux-64/r-activedriverwgs-1.1.1-r35_0.tar.bz2 -o /path/to/miniconda/envs/cbuild/conda-bld -f
+
+# Upload created conda package to https://anaconda.org
+anaconda upload /path/to/miniconda/envs/cbuild/conda-bld/osx-64/r-activedriverwgs-1.1.1-r35_0.tar.bz2
+
