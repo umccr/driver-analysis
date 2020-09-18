@@ -25,6 +25,7 @@ dependencies:
         - r-dt
         - r-upsetr
         - r-stringr
+        - r-pdftools
         - r-plotly=4.9.0
         - r-magick
         - r-rcircos
