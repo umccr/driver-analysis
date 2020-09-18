@@ -18,8 +18,8 @@ params:
   samples_id_cols: 'Tumor_Sample_Barcode'
   dnds_p: 0.05
   dnds_q: 1
-  activedriver_p: 0.05
-  activedriver_fdr: 1
+  activedriverwgs_p: 0.05
+  activedriverwgs_fdr: 1
   oncodriveclust_fdr: 0.5
   ratios_ci: FALSE
   hypermut_sample_cutoff: 200
@@ -45,7 +45,7 @@ params:
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
 
 * **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
-* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Helen et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
+* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
 * **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
@@ -62,8 +62,8 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **samples_id_cols**: `r params$samples_id_cols`
 * **dnds_p**: `r params$dnds_p`
 * **dnds_q**: `r params$dnds_q`
-* **activedriver_p**: `r params$activedriver_p`
-* **activedriver_fdr**: `r params$activedriver_fdr`
+* **activedriverwgs_p**: `r params$activedriverwgs_p`
+* **activedriverwgs_fdr**: `r params$activedriverwgs_fdr`
 * **oncodriveclust_fdr**: `r params$oncodriveclust_fdr`
 * **ratios_ci**: `r params$ratios_ci`
 * **hypermut_sample_cutoff**: `r params$hypermut_sample_cutoff`
@@ -462,7 +462,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
         
     } else {
       cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
+      cat(paste("Gene <i>", gene, "</i> has **no coding mutations** reported in dataset", dataset, "\n\n", sep=" "))
     }
   }
 }
@@ -1019,7 +1019,7 @@ for ( i in 1:length(mafFiles) ) {
   rownames(ActiveDriverWGS.res[[i]]) = NULL
 
   ##### Record sinigficant driver genes for each dataset
-  signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$pp_element <= params$activedriver_p  ], ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriver_fdr ]))
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$pp_element <= params$activedriverwgs_p  ], ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriverwgs_fdr ]))
   
   ##### Remove NAs
   signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ !is.na(signif_genes.datasets[[i]]$ActiveDriverWGS)]
@@ -1871,7 +1871,7 @@ cat("\n\n\n")
 
 ### ActiveDriverWGS {.tabset}
 
-Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Helen et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"}). [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} is a recurrence-based method which builds on the idea that driver mutations are subject to positive selection and should appear more frequently than expected by chance alone. This method analyzes the mutational burden of SNVs and short indels (less than 50bps) in functionally defined genomic elements.
+Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Zhu et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"}). [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} is a recurrence-based method which builds on the idea that driver mutations are subject to positive selection and should appear more frequently than expected by chance alone. This method analyzes the mutational burden of SNVs and short indels (less than 50bps) in functionally defined genomic elements.
 
 ***
 
@@ -1881,8 +1881,8 @@ Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://g
 
 * Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
 * Number of mutations per megabase define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff/100`**
-* P-value threshold for reporting cancer driver genes: **`r params$activedriver_p`**
-* False discovery rate (FDR) threshold for reporting cancer driver genes: **`r params$activedriver_fdr`**
+* P-value threshold for reporting cancer driver genes: **`r params$activedriverwgs_p`**
+* False discovery rate (FDR) threshold for reporting cancer driver genes: **`r params$activedriverwgs_fdr`**
 
 **Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff/100` mutations) are excluded as hyper-mutated samples carry many passenger mutations and dilute the signal of true drivers.
 
@@ -1893,7 +1893,7 @@ Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://g
 
 #### Plots
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all substitutions detected in individual genes. The *colour* scale reflects -log10 *False discovery rate* (FDR) values, with purple and yellow indicating low and high values, respectively.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all substitutions detected in individual genes. The *colour* scale reflects -log10 *False discovery rate* (FDR), with purple and yellow indicating low and high values, respectively.
 
 ```{r ActiveDriverWGS_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1942,7 +1942,7 @@ widges.list
 
 #### Cancer driver genes
 
-Table(s) presenting per-dataset [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} results, including *p-values*, *false discovery rate (FDR) values*, *number of mutations in individual samples*, as well as the *expected number of mutations in individual samples*.
+Table(s) presenting per-dataset [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} results, including *p-values*, *false discovery rate (FDR)*, *number of mutations in individual samples*, as well as the *expected number of mutations in individual samples*.
 
 ```{r ActiveDriverWGS_results_summary, comment = NA, message=FALSE, warning=FALSE}
 ##### Present dndscv results summary table in the html report
@@ -2006,7 +2006,7 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 #### Plot
 
-The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) values in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
+The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
 ```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 suppressMessages(library(plotly))
@@ -2063,7 +2063,7 @@ widges.list
 
 #### Cancer driver genes
 
-Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR) values*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
+Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR)*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
 ```{r oncodriveCLUST_table, comment=NA, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Generate tables with oncodriveCLUST results
