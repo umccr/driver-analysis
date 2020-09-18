@@ -20,6 +20,8 @@ params:
   dnds_q: 1
   activedriverwgs_p: 0.05
   activedriverwgs_fdr: 1
+  activedriverwgs_cores: 1
+  activedriverwgs_all_genes: FALSE
   oncodriveclust_fdr: 0.5
   ratios_ci: FALSE
   hypermut_sample_cutoff: 200
@@ -40,15 +42,16 @@ params:
   ucsc_genome_assembly: 19
   ensembl_version: 75
   refdb_38: '../data/RefCDS_human_GRCh38.p12.rda'
+  cancer_genes: '../data/umccr_cancer_genes.2019-03-20.tsv'
 ---
 
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
 
-* **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
-* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
-* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
-* **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
-* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
+* **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
+* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu *et al*., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
+* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
+* **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
 ***
 
@@ -64,6 +67,8 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **dnds_q**: `r params$dnds_q`
 * **activedriverwgs_p**: `r params$activedriverwgs_p`
 * **activedriverwgs_fdr**: `r params$activedriverwgs_fdr`
+* **activedriverwgs_cores**: `r params$activedriverwgs_cores`
+* **activedriverwgs_all_genes**: `r params$activedriverwgs_all_genes`
 * **oncodriveclust_fdr**: `r params$oncodriveclust_fdr`
 * **ratios_ci**: `r params$ratios_ci`
 * **hypermut_sample_cutoff**: `r params$hypermut_sample_cutoff`
@@ -940,37 +945,50 @@ for ( i in 1:length(mafFiles) ) {
 ##### The input data is supposed to be a data.frame with six columns (chr, pos1, pos2, ref, alt, and patient)
 ##### Convert the MAF calss objest to the format relevant for ActiveDriverWGS
 ##### NOTE, silent mutations are also included
-ActiveDriverInfo <- vector("list", length(mafFiles))
-names(ActiveDriverInfo) <- datasets.list
+ActiveDriverWGSInfo <- vector("list", length(mafFiles))
+names(ActiveDriverWGSInfo) <- datasets.list
+
+##### Record genes used for the analysis
+ActiveDriverWGS.genes <- NULL
 
 for ( i in 1:length(mafFiles) ) {
   
-  ActiveDriverInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")], mafInfo[[i]]@maf.silent[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")])
-  names(ActiveDriverInfo[[i]]) <- c("SYMBOL", "chr", "pos1", "pos2", "ref", "alt", "patient")
-  ActiveDriverInfo[[i]]$patient <- as.vector(ActiveDriverInfo[[i]]$patient)
+  ActiveDriverWGSInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")], mafInfo[[i]]@maf.silent[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")])
+  names(ActiveDriverWGSInfo[[i]]) <- c("SYMBOL", "chr", "pos1", "pos2", "ref", "alt", "patient")
+  ActiveDriverWGSInfo[[i]]$patient <- as.vector(ActiveDriverWGSInfo[[i]]$patient)
   
-  ##### Run analysis for selected genes
-  if ( params$genes_list != "none" ){
-      ActiveDriverInfo[[i]] <- ActiveDriverInfo[[i]][ ActiveDriverInfo[[i]]$SYMBOL %in% goi,]
+  ##### Load UMCCR cancer gene list for ActiveDriverWGS if the "activedriverwgs_all_genes" paramter is not set to TRUE
+  ##### (https://github.com/vladsaveliev/NGS_Utils/blob/master/ngs_utils/reference_data/key_genes/umccr_cancer_genes.2019-03-20.tsv)
+  if ( !params$activedriverwgs_all_genes ) {
+    cancer_genes <- read.table(params$cancer_genes, sep="\t", as.is=TRUE, header=TRUE, row.names=NULL, quote="")
+    ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$SYMBOL %in% cancer_genes$symbol, ]
+    
+    ActiveDriverWGS.genes <- unique(c(ActiveDriverWGS.genes, ActiveDriverWGSInfo[[i]]$SYMBOL))
+    
+    ##### Run analysis for selected genes
+  } else if ( params$genes_list != "none" ){
+    ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$SYMBOL %in% goi, ]
+      
+    ActiveDriverWGS.genes <- unique(c(ActiveDriverWGS.genes, ActiveDriverWGSInfo[[i]]$SYMBOL))
   }
   
   ##### Remove gene column
-  ActiveDriverInfo[[i]] <- ActiveDriverInfo[[i]][ , -c("SYMBOL")]
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ , -c("SYMBOL")]
   
   ##### Make sure that the chromosome numbers start with "chr"
-  if ( is.na(match("chr", ActiveDriverInfo[[i]]$chr)) ) {
-    ActiveDriverInfo[[i]]$chr <- paste0("chr", ActiveDriverInfo[[i]]$chr)
+  if ( is.na(match("chr", ActiveDriverWGSInfo[[i]]$chr)) ) {
+    ActiveDriverWGSInfo[[i]]$chr <- paste0("chr", ActiveDriverWGSInfo[[i]]$chr)
   }
   
   ##### Make sure that sex chromosomes are defined as chrX and chrY
-  ActiveDriverInfo[[i]]$chr <- gsub("chr23", "chrX", ActiveDriverInfo[[i]]$chr)
-  ActiveDriverInfo[[i]]$chr <- gsub("chr24", "chrY", ActiveDriverInfo[[i]]$chr)
+  ActiveDriverWGSInfo[[i]]$chr <- gsub("chr23", "chrX", ActiveDriverWGSInfo[[i]]$chr)
+  ActiveDriverWGSInfo[[i]]$chr <- gsub("chr24", "chrY", ActiveDriverWGSInfo[[i]]$chr)
   
   ##### Make sure that only autosomal and sex chromosomes are provided
-  ActiveDriverInfo[[i]] <- ActiveDriverInfo[[i]][ ActiveDriverInfo[[i]]$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
   
   ##### Finally make sure that all rows have defined "ref" and "alt" values (none NAs)
-  ActiveDriverInfo[[i]] <- ActiveDriverInfo[[i]][complete.cases(ActiveDriverInfo[[i]]), ]
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][complete.cases(ActiveDriverWGSInfo[[i]]), ]
 }
 
 ##### ActiveDriverWGS also requires specific elements (which will be used for the analysis) that must be in data frame containing the columns with the correct column names (chr, start, end, and id)
@@ -993,8 +1011,8 @@ elements$chr <- paste0("chr", elements$chr)
 elements <- elements[ elements$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
 
 ##### Run analysis for selected genes
-if ( params$genes_list != "none" ){
-    elements = elements[ elements$id %in% goi,]
+if ( !is.null(ActiveDriverWGS.genes) ) {
+    elements = elements[ elements$id %in% ActiveDriverWGS.genes,]
 }
 ```
 
@@ -1008,9 +1026,18 @@ names(ActiveDriverWGS.res) <- datasets.list
 signif_genes.methods$ActiveDriverWGS <- vector("list", length(datasets.list))
 names(signif_genes.methods$ActiveDriverWGS) <- datasets.list
 
+##### Create directory for storing recovery files
+if ( !file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
+  dir.create(paste(outDir, "ActiveDriverWGS_recovery", sep="/"), recursive=TRUE)
+}
+
 for ( i in 1:length(mafFiles) ) {
-    
-  ActiveDriverWGS.res[[i]] = suppressWarnings(ActiveDriverWGS(mutations = ActiveDriverInfo[[i]], elements = elements, sites = NULL, window_size = 50000, filter_hyper_MB = params$hypermut_sample_cutoff/100, recovery.dir = NULL, mc.cores = 1, ref_genome = paste0("hg", params$ucsc_genome_assembly)))
+  
+  ##### Suppress automatic output to console
+  sink("/dev/null")
+  ##### NOTE: the analysis crash when "recovery.dir" paramter (for storing recovery files) is used so currnelty it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
+  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, filter_hyper_MB = params$hypermut_sample_cutoff/100, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
+  sink() 
 
   ##### Order the table by element_muts_obs, pp_element, fdr_element and element_enriched
   ActiveDriverWGS.res[[i]] <- ActiveDriverWGS.res[[i]][ order( ActiveDriverWGS.res[[i]]$element_muts_obs, decreasing = TRUE), ]
@@ -1033,6 +1060,11 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$ActiveDriverWGS <- signif_genes_table.datasets[[i]]$ActiveDriverWGS[ , c("id", "pp_element", "fdr_element", "element_muts_obs", "element_muts_exp")]
+}
+
+##### Remove directory for storing recovery files once analyses are finished
+if ( file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
+  unlink(paste(outDir, "ActiveDriverWGS_recovery", sep="/"), recursive=TRUE)
 }
 ```
 
@@ -1874,6 +1906,15 @@ cat("\n\n\n")
 Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Zhu et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"}). [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} is a recurrence-based method which builds on the idea that driver mutations are subject to positive selection and should appear more frequently than expected by chance alone. This method analyzes the mutational burden of SNVs and short indels (less than 50bps) in functionally defined genomic elements.
 
 ***
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<details>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<summary>Analysed genes</summary>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<font size=\"2\">") }`
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { ActiveDriverWGS.genes }`
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("</font>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("</details>") }`
 
 <details>
 <summary>Input parameters</summary>
