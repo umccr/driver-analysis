@@ -32,6 +32,8 @@ dependencies:
         - r-dplyr
         - bioconductor-ensdb.hsapiens.v75
         - bioconductor-ensdb.hsapiens.v86
+        - bioconductor-bsgenome.hsapiens.ucsc.hg19
+        - bioconductor-bsgenome.hsapiens.ucsc.hg38
         - bioconductor-iranges
         - bioconductor-maftools
         - python-dateutil
