@@ -54,6 +54,8 @@ git push --tags
 # Build conda package. This goes through all of the dependencies and their dependencies and searches for them in the conda-forge and bioconda Conda channels. The conda skeleton cran command automatically pulls the latest tag
 conda skeleton cran https://github.com/JMarzec/ActiveDriverWGSR.git
 
+cd /path/to/miniconda/envs/r-activedriverwgsr
+
 # Need to fix list of dependencies in created /path/to/miniconda/envs/r-activedriverwgsr/meta.yaml and change "r-biostrings" to "bioconductor-biostrings", "r-bsgenome.hsapiens.ucsc.hg19" to "bioconductor-bsgenome.hsapiens.ucsc.hg19", "r-genomeinfodb" to "bioconductor-genomeinfodb", "r-iranges" to "bioconductor-iranges", "r-s4vectors" to "bioconductor-s4vectors", "r-genomicranges" to "bioconductor-genomicranges" and "r-bsgenome" to "bioconductor-bsgenome" in two places (host and run sections)
 
 # Now build the package
