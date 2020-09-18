@@ -24,11 +24,12 @@
 #   dnds_q:       dNdS method q-value threshold for reporting significant genes (defualt 1)
 #   activedriverwgs_p:       ActiveDriverWGS method p-value threshold for reporting significant genes (defualt 0.05)
 #   activedriverwgs_fdr:       ActiveDriverWGS method FDR-value threshold for reporting significant genes (defualt 1)
+#   activedriverwgs_cores:    Number of cores to be used for running ActiveDriverWGS method (defualt 1)
+#   activedriverwgs_all_genes:     Run ActiveDriverWGS method for all genes (defualt FALSE where the analysed regions will be limited to genes listed in cancer genes (https://github.com/vladsaveliev/NGS_Utils/blob/master/ngs_utils/reference_data/key_genes/umccr_cancer_genes.2019-03-20.tsv))
 #   oncodriveclust_fdr:   OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt 0.5)
 #   ratios_ci:    Calculate per-gene confidence intervals for the dN/dS ratios (default FALSE)
 #   hypermut_sample_cutoff:   Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt 1000)
 #   max_muts_per_gene:   Maximum mutations per gene in same sample (remaining will be subsampled; defualt 3)
-#   genes_list (optional):  Location and name of a file listing genes of interest to be considered in the report. The genes are expected to be listed in first column
 #   genes_list (optional):  Location and name of a file listing genes of interest to be considered in the report. The genes are expected to be listed in first column
 #   genes_blacklist (optional):  Location and name of a file listing genes to be excluded. Header is not expected and the genes should be listed in separate lines
 #   nonSyn_list (optional):   List of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants
@@ -78,6 +79,10 @@ option_list <- list(
               help="ActiveDriverWGS method p-value threshold for reporting significant genes"),
   make_option("--activedriverwgs_fdr", action="store", default=1, type='double',
               help="ActiveDriverWGS method FDR value threshold for reporting significant genes"),
+  make_option("--activedriverwgs_cores", action="store", default=1, type='double',
+              help="Number of cores to be used for running ActiveDriverWGS method"),
+  make_option("--activedriverwgs_all_genes", action="store", default=FALSE, type='logical',
+              help="Run ActiveDriverWGS method for all genes"),
   make_option("--oncodriveclust_fdr", action="store", default=0.5, type='double',
               help="OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes"),
   make_option("--ratios_ci", action="store", default=FALSE, type='logical',
@@ -174,6 +179,8 @@ param_list <- list(maf_dir = opt$maf_dir,
                    dnds_q = opt$dnds_q,
                    activedriverwgs_p = opt$activedriverwgs_p,
                    activedriverwgs_fdr = opt$activedriverwgs_fdr,
+                   activedriverwgs_cores = opt$activedriverwgs_cores,
+                   activedriverwgs_all_genes = opt$activedriverwgs_all_genes,
                    oncodriveclust_fdr = opt$oncodriveclust_fdr,
                    ratios_ci = opt$ratios_ci,
                    hypermut_sample_cutoff = opt$hypermut_sample_cutoff,
