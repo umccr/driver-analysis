@@ -20,7 +20,7 @@ dependencies:
         - r-rmarkdown
         - r-optparse
         - r-dndscv
-        - r-activedriverwgsr
+        - r-activedriverwgs
         - r-ggplot2
         - r-dt
         - r-upsetr
