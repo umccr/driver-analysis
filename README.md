@@ -123,6 +123,8 @@ Argument | Description | Required
 --dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `1`) | No
 --activedriverwgs_p | [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) method p-value threshold for reporting significant genes (defualt is `0.05`) | No
 --activedriverwgs_fdr | [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) method FDR threshold for reporting significant genes (defualt is `1`) | No
+--activedriverwgs_cores | Number of cores to be used for running [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) (defualt is `1`) | No
+--activedriverwgs_all_genes | Run [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) for all genes (defualt is `FALSE` where the analysed regions will be limited to genes listed in [cancer genes](data/umccr_cancer_genes.2019-03-20.tsv)) | No
 --oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`) | No
 --ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`) | No
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`) | No
