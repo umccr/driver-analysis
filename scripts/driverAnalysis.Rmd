@@ -1046,7 +1046,8 @@ for ( i in 1:length(mafFiles) ) {
   rownames(ActiveDriverWGS.res[[i]]) = NULL
 
   ##### Record sinigficant driver genes for each dataset
-  signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$pp_element <= params$activedriverwgs_p  ], ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriverwgs_fdr ]))
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$pp_element <= params$activedriverwgs_p & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriverwgs_fdr ]))
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ signif_genes.datasets[[i]]$ActiveDriverWGS %in% ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched ] ]
   
   ##### Remove NAs
   signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ !is.na(signif_genes.datasets[[i]]$ActiveDriverWGS)]
