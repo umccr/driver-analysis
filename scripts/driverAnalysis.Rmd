@@ -3332,7 +3332,7 @@ for ( i in 1:length(mafFiles) ) {
     cat("<details>")
     cat("<summary>All driver genes</summary>")
     cat("<font size=\"2\">")
-    cat(signif_genes.all[i]])
+    cat(signif_genes.all[[i]])
     cat("</font>")
     cat("</details>")
     
