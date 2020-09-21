@@ -1356,6 +1356,11 @@ for ( i in 1:length(mafFiles) ) {
     ##### Add "chr" to chromosome numbers
     gene_info$Chromosome <- paste0("chr", gene_info$Chromosome)
     signif_genes.annot[[i]] <- gene_info
+    
+    ##### Re-order genes
+    rownames(signif_genes.annot[[i]]) <- signif_genes.annot[[i]]$Gene
+    signif_genes.annot[[i]] <- signif_genes.annot[[i]][ signif_genes[[i]], ]
+    signif_genes.annot[[i]] <- signif_genes.annot[[i]][ !is.na(signif_genes.annot[[i]]$Gene), ]
   }
 }
 
@@ -3228,13 +3233,25 @@ cat("\n\n\n")
 
 Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(methods, collapse = ", ")`**.
 
-```{r circos_prep, comment = NA, message=FALSE, warning=FALSE}
+```{r circos_prep, comment = NA, message=FALSE, warning=FALSE, results="asis"}
 ##### Prepare circos plot with cancer driver genes detected by various methods
 signif_genes.excl <- vector("list", length(mafFiles))
 names(signif_genes.excl) <- datasets.list
 
+signif_genes.standard <- vector("list", length(mafFiles))
+names(signif_genes.standard) <- datasets.list
+
+signif_genes.excess <- vector("list", length(mafFiles))
+names(signif_genes.excess) <- datasets.list
+
+signif_genes.plotted <- vector("list", length(mafFiles))
+names(signif_genes.plotted) <- datasets.list
+
 signif_genes.incl <- vector("list", length(mafFiles))
 names(signif_genes.incl) <- datasets.list
+
+signif_genes.all<- vector("list", length(mafFiles))
+names(signif_genes.all) <- datasets.list
 
 for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
@@ -3243,8 +3260,34 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Check if all driver genes are located in standard chromosomes
     signif_genes.excl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %!in% cyto.info$Chromosome,  ]
-    signif_genes.incl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %in% cyto.info$Chromosome,  ]
+    signif_genes.standard[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %in% cyto.info$Chromosome,  ]
     
+    ##### There is a limit of number of gene labels on the circos plot so select only so of the detected driver genes to meet these limits in case there are more driver genes than allowed on the plot
+    ##### Define number of allowed genes in each chromosome
+    signif_genes.chr <- c(paste0("chr", rep(1:22)), "chrX", "chrY")
+    signif_genes.chr_max <- c(16,16,13,12,12,11,10,9,9,8,9,8,7,7,6,6,5,5,3,4,3,3,10,3)
+    
+    ##### Loop through each chromosome
+    for (j in 1:24) {
+      if ( nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]) > signif_genes.chr_max[j] ) {
+        
+        ##### Record driver genes that will NOT be plotted
+        signif_genes.excess[[i]] <- paste0(signif_genes.excess[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][(signif_genes.chr_max[j]+1):nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])], collapse = ", "))
+        
+        ##### Record driver genes that will be plotted
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][1:signif_genes.chr_max[j]], collapse = ", "))
+        signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ][1:signif_genes.chr_max[j],])
+        
+      } else if ( length(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]$Gene) > 0 ) {
+        ##### Record driver genes that will be plotted
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+        signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])
+      }
+      
+      ##### Record all driver genes
+      signif_genes.all[[i]] <- paste0(signif_genes.all[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+    }
+        
     if ( nrow(signif_genes.incl[[i]]) > 100 ) {
       tracks.inside <- 8
       pointsize <- 22
@@ -3276,6 +3319,33 @@ for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
     
     cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
+    
+    ##### Genes that are plotted
+    cat("<details>")
+    cat("<summary>Labeled driver genes</summary>")
+    cat("<font size=\"2\">")
+    cat(signif_genes.plotted[[i]])
+    cat("</font>")
+    cat("</details>")
+    
+    ##### All driver genes
+    cat("<details>")
+    cat("<summary>All driver genes</summary>")
+    cat("<font size=\"2\">")
+    cat(signif_genes.all[i]])
+    cat("</font>")
+    cat("</details>")
+    
+    ##### Genes that are NOT plotted
+    if ( !is.null(signif_genes.excess[[i]]) ) {
+      cat("<br><br><span style=\"color:#ff0000\">NOTE</span>: driver genes that did not fit in the circos plot are listed below")
+      cat("<details>")
+      cat("<summary>Unlabeled driver genes</summary>")
+      cat("<font size=\"2\">")
+      cat(signif_genes.excess[[i]])
+      cat("</font>")
+      cat("</details>")
+    }
     
     ##### Report driver genes with missing genomic annotation
     if ( nrow(signif_genes.excl[[i]]) > 0 ) {
