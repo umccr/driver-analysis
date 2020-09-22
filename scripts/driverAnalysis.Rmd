@@ -3272,20 +3272,22 @@ for ( i in 1:length(mafFiles) ) {
       if ( nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]) > signif_genes.chr_max[j] ) {
         
         ##### Record driver genes that will NOT be plotted
-        signif_genes.excess[[i]] <- paste0(signif_genes.excess[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][(signif_genes.chr_max[j]+1):nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])], collapse = ", "))
+        signif_genes.excess[[i]] <- paste0(signif_genes.excess[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][(signif_genes.chr_max[j]+1):nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])], collapse = ", "))
         
         ##### Record driver genes that will be plotted
-        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][1:signif_genes.chr_max[j]], collapse = ", "))
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][1:signif_genes.chr_max[j]], collapse = ", "))
         signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ][1:signif_genes.chr_max[j],])
         
       } else if ( length(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]$Gene) > 0 ) {
         ##### Record driver genes that will be plotted
-        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
         signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])
       }
       
       ##### Record all driver genes
-      signif_genes.all[[i]] <- paste0(signif_genes.all[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+      if ( length(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]$Gene) > 0 ) {
+        signif_genes.all[[i]] <- paste0(signif_genes.all[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+      }
     }
         
     if ( nrow(signif_genes.incl[[i]]) > 100 ) {
@@ -3322,14 +3324,14 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Genes that are plotted
     cat("<details>")
-    cat("<summary>Labeled driver genes</summary>")
+    cat("<summary>Driver genes in circos plot</summary>")
     cat("<font size=\"2\">")
     cat(signif_genes.plotted[[i]])
     cat("</font>")
     cat("</details>")
     
     ##### All driver genes
-    cat("<details>")
+    cat("<br><details>")
     cat("<summary>All driver genes</summary>")
     cat("<font size=\"2\">")
     cat(signif_genes.all[[i]])
@@ -3338,7 +3340,7 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Genes that are NOT plotted
     if ( !is.null(signif_genes.excess[[i]]) ) {
-      cat("<br><br><span style=\"color:#ff0000\">NOTE</span>: driver genes that did not fit in the circos plot are listed below")
+      cat("<br><span style=\"color:#ff0000\">NOTE</span>: driver genes that did not fit in the circos plot are listed below")
       cat("<details>")
       cat("<summary>Unlabeled driver genes</summary>")
       cat("<font size=\"2\">")
