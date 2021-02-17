@@ -39,8 +39,8 @@ params:
   remove_duplicated_variants: TRUE
   hide_code_btn: TRUE
   out_folder: 'Driver_analysis_report'
-  ucsc_genome_assembly: 19
-  ensembl_version: 75
+  ucsc_genome_assembly: 38
+  ensembl_version: 86
   refdb_38: '../data/RefCDS_human_GRCh38.p12.rda'
   cancer_genes: '../data/umccr_cancer_genes.2019-03-20.tsv'
 ---
@@ -768,8 +768,24 @@ for ( i in 1:length(mafFiles) ) {
   names(dndscvInfo[[i]]) <- c("sampleID", "chr", "pos", "ref", "mut")
   
   ##### Make sure that the chromosome numbers start with "chr"
+  #if ( !is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
+  #  dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
+  #}
+  
+  ##### Make sure that the chromosome numbers does NOT start with "chr"
   if ( is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
-    dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
+    dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
+  }
+  
+  
+  dndscvInfo[[i]]$chr <- as.numeric(dndscvInfo[[i]]$chr)
+  
+  dndscvInfo[[i]] <- dndscvInfo[[i]][ !is.na(dndscvInfo[[i]]$chr), ]
+  
+  if ( is.numeric(dndscvInfo[[i]]$chr) ) {
+    dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
+    
+    
   }
 }
 ```
