@@ -42,7 +42,7 @@
 #	  remove_duplicated_variants (optional):		Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? Defulat value is "FALSE"
 #   out_folder:   Name for the output folder that will be created within the directory with MAF files. If no output folder is specified the results will be saved in folder "Driver_analysis_report"
 #   hide_code_btn: Hide the "Code" button allowing to show/hide code chunks in the final HTML report. Available options are: "TRUE" (default) and "FALSE"
-#   ucsc_genome_assembly:  Human reference genome version used for signature analysis (default is "38")
+#   ucsc_genome_assembly:  Human reference genome version used for signature analysis (default is "19")
 #
 ################################################################################
 
@@ -117,7 +117,7 @@ option_list <- list(
               help="Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene?"),
   make_option("--hide_code_btn", action="store", default=TRUE, type='logical',
               help="Hide the \"Code\" button allowing to show/hide code chunks in the final HTML report"),
-  make_option("--ucsc_genome_assembly", action="store", default=38, type='integer',
+  make_option("--ucsc_genome_assembly", action="store", default=19, type='integer',
               help="human reference genome version used for signature analysis")
 )
 
@@ -198,7 +198,6 @@ param_list <- list(maf_dir = opt$maf_dir,
                    cgi = opt$cgi, clinical_info = opt$clinical_info,
                    remove_duplicated_variants = opt$remove_duplicated_variants,
                    hide_code_btn = opt$hide_code_btn,
-                   ucsc_genome_assembly = as.numeric(opt$ucsc_genome_assembly),
                    ensembl_version = as.numeric(ensembl_version)
 )
 

@@ -39,8 +39,8 @@ params:
   remove_duplicated_variants: TRUE
   hide_code_btn: TRUE
   out_folder: 'Driver_analysis_report'
-  ucsc_genome_assembly: 38
-  ensembl_version: 86
+  ucsc_genome_assembly: 19
+  ensembl_version: 75
   refdb_38: '../data/RefCDS_human_GRCh38.p12.rda'
   cancer_genes: '../data/umccr_cancer_genes.2019-03-20.tsv'
 ---
