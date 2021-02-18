@@ -2176,7 +2176,7 @@ cat("\n\n\n")
 <summary>OncodriveFML settings</summary>
 <font size="2">
 
-`r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0(unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
+`r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0("-", unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
 
 </font> 
 </details>
