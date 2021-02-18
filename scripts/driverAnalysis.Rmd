@@ -611,7 +611,7 @@ if ( params$oncodrivefml_conf != "none" ){
   
   ##### Read in the results table
   if ( file.exists(paste0(oncodriveFML.res[i], ".tsv")) ) {
-    oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="")
+    oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="#")
   }
 }
 
@@ -2176,7 +2176,7 @@ cat("\n\n\n")
 <summary>OncodriveFML settings</summary>
 <font size="2">
 
-`r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0("-", unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
+`r if ( !is.null(oncodrivefml.conf) ) { c(gsub("],", "]: ", paste0(unlist(oncodrivefml.conf), collapse = ", "), perl = TRUE)) } else { c("OncodriveFML configuration file is not available.") }`
 
 </font> 
 </details>
@@ -3367,7 +3367,7 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Report driver genes with missing genomic annotation
     if ( nrow(signif_genes.excl[[i]]) > 0 ) {
-      cat("The genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot: ", paste(signif_genes.excl[[i]]$Gene, collapse = ", "), " \n\n", sep=" ")
+      cat("\nThe genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot: ", paste(signif_genes.excl[[i]]$Gene, collapse = ", "), " \n\n", sep=" ")
     }
     
     ##### Export pdf to png
