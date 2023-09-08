@@ -18,9 +18,13 @@ params:
   samples_id_cols: 'Tumor_Sample_Barcode'
   dnds_p: 0.05
   dnds_q: 1
+  activedriverwgs_p: 0.05
+  activedriverwgs_fdr: 1
+  activedriverwgs_cores: 1
+  activedriverwgs_all_genes: FALSE
   oncodriveclust_fdr: 0.5
   ratios_ci: FALSE
-  hypermut_sample_cutoff: 3000
+  hypermut_sample_cutoff: 200
   max_muts_per_gene: 3
   genes_list: 'none'
   genes_blacklist: 'none'
@@ -38,14 +42,16 @@ params:
   ucsc_genome_assembly: 19
   ensembl_version: 75
   refdb_38: '../data/RefCDS_human_GRCh38.p12.rda'
+  cancer_genes: '../data/umccr_cancer_genes.2019-03-20.tsv'
 ---
 
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
 
-* **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
-* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
-* **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni et al., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
-* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
+* **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
+* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu *et al*., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
+* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
+* **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
 ***
 
@@ -59,6 +65,10 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **samples_id_cols**: `r params$samples_id_cols`
 * **dnds_p**: `r params$dnds_p`
 * **dnds_q**: `r params$dnds_q`
+* **activedriverwgs_p**: `r params$activedriverwgs_p`
+* **activedriverwgs_fdr**: `r params$activedriverwgs_fdr`
+* **activedriverwgs_cores**: `r params$activedriverwgs_cores`
+* **activedriverwgs_all_genes**: `r params$activedriverwgs_all_genes`
 * **oncodriveclust_fdr**: `r params$oncodriveclust_fdr`
 * **ratios_ci**: `r params$ratios_ci`
 * **hypermut_sample_cutoff**: `r params$hypermut_sample_cutoff`
@@ -457,7 +467,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
         
     } else {
       cat(paste("\n\n <b>", dataset, "</b> \n\n", sep=" "))
-      cat(paste("Gene <i>", gene, "</i> has no mutations reported in dataset", dataset, "\n\n", sep=" "))
+      cat(paste("Gene <i>", gene, "</i> has **no coding mutations** reported in dataset", dataset, "\n\n", sep=" "))
     }
   }
 }
@@ -478,6 +488,7 @@ suppressMessages(library(knitr))
 suppressMessages(library(maftools))
 suppressMessages(library(IRanges))
 suppressMessages(library(dndscv))
+suppressMessages(library(ActiveDriverWGS))
 suppressMessages(library(ggplot2))
 suppressMessages(library(DT))
 suppressMessages(library(UpSetR))
@@ -600,7 +611,7 @@ if ( params$oncodrivefml_conf != "none" ){
   
   ##### Read in the results table
   if ( file.exists(paste0(oncodriveFML.res[i], ".tsv")) ) {
-    oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="")
+    oncodrivefml.conf <- read.table(params$oncodrivefml_conf, sep="\t", as.is=TRUE, header=FALSE, row.names=NULL, comment.char="#")
   }
 }
 
@@ -654,7 +665,7 @@ signif_genes_table.datasets <- vector("list", length(mafFiles))
 names(signif_genes_table.datasets) <- datasets.list
 
 ##### Initiate a list to record sinigficant driver genes for each method
-methods <- c("dNdScv", "dNdSloc", "OncodriveCLUST")
+methods <- c("dNdScv", "dNdSloc", "ActiveDriverWGS", "OncodriveCLUST")
 
 if ( runOncodrivefmlChunk ) {
   methods <- c(methods, "OncodriveFML")
@@ -747,6 +758,7 @@ for ( i in 1:length(mafFiles) ) {
 ```{r dndscv_format_data, comment = NA, message=FALSE, warning=FALSE }
 ##### The input data is supposed to be a data.frame with five columns (sampleID, chr, pos, ref [base], mutant [base])
 ##### Convert the MAF calss objest to the format relevant for dndscv
+##### NOTE, silent mutations are also included
 dndscvInfo <- vector("list", length(mafFiles))
 names(dndscvInfo) <- datasets.list
 
@@ -756,10 +768,25 @@ for ( i in 1:length(mafFiles) ) {
   names(dndscvInfo[[i]]) <- c("sampleID", "chr", "pos", "ref", "mut")
   
   ##### Make sure that the chromosome numbers start with "chr"
+  #if ( !is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
+  #  dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
+  #}
+  
+  ##### Make sure that the chromosome numbers does NOT start with "chr"
   if ( is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
-    dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
+    dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
   }
+  
+  
+  dndscvInfo[[i]]$chr <- as.numeric(dndscvInfo[[i]]$chr)
+  
+  dndscvInfo[[i]] <- dndscvInfo[[i]][ !is.na(dndscvInfo[[i]]$chr), ]
+  
+  if ( is.numeric(dndscvInfo[[i]]$chr) ) {
+    dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
     
+    
+  }
 }
 ```
 
@@ -922,7 +949,139 @@ for ( i in 1:length(mafFiles) ) {
       
     ##### Extract required data from MAF
     mafInfo[[i]] <- subsetMaf(maf = mafInfo[[i]], tsb = sample2keep, genes = NULL, fields = NULL, query = NULL, mafObj = TRUE, includeSyn = TRUE)
+    
+    hypermut_samples_status <- TRUE
+  } else {
+    hypermut_samples_status <- FALSE
   }
+}
+```
+
+```{r ActiveDriverWGS_format_data, comment = NA, message=FALSE, warning=FALSE }
+##### The input data is supposed to be a data.frame with six columns (chr, pos1, pos2, ref, alt, and patient)
+##### Convert the MAF calss objest to the format relevant for ActiveDriverWGS
+##### NOTE, silent mutations are also included
+ActiveDriverWGSInfo <- vector("list", length(mafFiles))
+names(ActiveDriverWGSInfo) <- datasets.list
+
+##### Record genes used for the analysis
+ActiveDriverWGS.genes <- NULL
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ActiveDriverWGSInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")], mafInfo[[i]]@maf.silent[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")])
+  names(ActiveDriverWGSInfo[[i]]) <- c("SYMBOL", "chr", "pos1", "pos2", "ref", "alt", "patient")
+  ActiveDriverWGSInfo[[i]]$patient <- as.vector(ActiveDriverWGSInfo[[i]]$patient)
+  
+  ##### Load UMCCR cancer gene list for ActiveDriverWGS if the "activedriverwgs_all_genes" paramter is not set to TRUE
+  ##### (https://github.com/vladsaveliev/NGS_Utils/blob/master/ngs_utils/reference_data/key_genes/umccr_cancer_genes.2019-03-20.tsv)
+  if ( !params$activedriverwgs_all_genes ) {
+    cancer_genes <- read.table(params$cancer_genes, sep="\t", as.is=TRUE, header=TRUE, row.names=NULL, quote="")
+    ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$SYMBOL %in% cancer_genes$symbol, ]
+    
+    ActiveDriverWGS.genes <- unique(c(ActiveDriverWGS.genes, ActiveDriverWGSInfo[[i]]$SYMBOL))
+    
+    ##### Run analysis for selected genes
+  } else if ( params$genes_list != "none" ){
+    ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$SYMBOL %in% goi, ]
+      
+    ActiveDriverWGS.genes <- unique(c(ActiveDriverWGS.genes, ActiveDriverWGSInfo[[i]]$SYMBOL))
+  }
+  
+  ##### Remove gene column
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ , -c("SYMBOL")]
+  
+  ##### Make sure that the chromosome numbers start with "chr"
+  if ( is.na(match("chr", ActiveDriverWGSInfo[[i]]$chr)) ) {
+    ActiveDriverWGSInfo[[i]]$chr <- paste0("chr", ActiveDriverWGSInfo[[i]]$chr)
+  }
+  
+  ##### Make sure that sex chromosomes are defined as chrX and chrY
+  ActiveDriverWGSInfo[[i]]$chr <- gsub("chr23", "chrX", ActiveDriverWGSInfo[[i]]$chr)
+  ActiveDriverWGSInfo[[i]]$chr <- gsub("chr24", "chrY", ActiveDriverWGSInfo[[i]]$chr)
+  
+  ##### Make sure that only autosomal and sex chromosomes are provided
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
+  
+  ##### Finally make sure that all rows have defined "ref" and "alt" values (none NAs)
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][complete.cases(ActiveDriverWGSInfo[[i]]), ]
+}
+
+##### ActiveDriverWGS also requires specific elements (which will be used for the analysis) that must be in data frame containing the columns with the correct column names (chr, start, end, and id)
+##### Get genes annotation and genomic locations
+edb <- eval(parse(text = paste0("EnsDb.Hsapiens.v", params$ensembl_version)))
+  
+##### Get keytypes for gene SYMBOL
+keys <- keys(edb, keytype="GENEID")
+  
+##### Get genes genomic coordiantes
+elements <- ensembldb::select(edb, keys=keys, columns=c("SEQNAME", "GENESEQSTART", "GENESEQEND", "GENENAME", "GENEID"), keytype="GENEID")
+
+##### rename column names
+names(elements) <- c("chr", "start", "end", "id", "GENEID")
+
+##### Make sure that the chromosome numbers start with "chr"
+elements$chr <- paste0("chr", elements$chr)
+
+##### Make sure that only autosomal and sex chromosomes are provided
+elements <- elements[ elements$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
+
+##### Run analysis for selected genes
+if ( !is.null(ActiveDriverWGS.genes) ) {
+    elements = elements[ elements$id %in% ActiveDriverWGS.genes,]
+}
+```
+
+```{r ActiveDriverWGS_analysis, comment = NA, message=FALSE, warning=FALSE }
+##### ActiveDriverWGS approach for cancer driver discovery (https://htmlpreview.github.io/?https://github.com/reimandlab/ActiveDriverWGSR/blob/master/doc/ActiveDriverWGSR.html#introduction)
+
+##### Create a list to store MAF info for individual datasets
+ActiveDriverWGS.res <- vector("list", length(mafFiles))
+names(ActiveDriverWGS.res) <- datasets.list
+
+signif_genes.methods$ActiveDriverWGS <- vector("list", length(datasets.list))
+names(signif_genes.methods$ActiveDriverWGS) <- datasets.list
+
+##### Create directory for storing recovery files
+if ( !file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
+  dir.create(paste(outDir, "ActiveDriverWGS_recovery", sep="/"), recursive=TRUE)
+}
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Suppress automatic output to console
+  sink("/dev/null")
+  ##### NOTE: the analysis crash when "recovery.dir" paramter (for storing recovery files) is used so currnelty it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
+  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, filter_hyper_MB = params$hypermut_sample_cutoff/100, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
+  sink() 
+
+  ##### Order the table by element_muts_obs, pp_element, fdr_element and element_enriched
+  ActiveDriverWGS.res[[i]] <- ActiveDriverWGS.res[[i]][ order( ActiveDriverWGS.res[[i]]$element_muts_obs, decreasing = TRUE), ]
+  ActiveDriverWGS.res[[i]] <- ActiveDriverWGS.res[[i]][ order(ActiveDriverWGS.res[[i]]$pp_element, ActiveDriverWGS.res[[i]]$fdr_element), ]
+  ActiveDriverWGS.res[[i]] <- ActiveDriverWGS.res[[i]][ order( ActiveDriverWGS.res[[i]]$element_enriched, decreasing = TRUE), ]
+  rownames(ActiveDriverWGS.res[[i]]) = NULL
+
+  ##### Record sinigficant driver genes for each dataset
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$pp_element <= params$activedriverwgs_p & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriverwgs_fdr ]))
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ signif_genes.datasets[[i]]$ActiveDriverWGS %in% ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched ] ]
+  
+  ##### Remove NAs
+  signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ !is.na(signif_genes.datasets[[i]]$ActiveDriverWGS)]
+  
+  ##### Report significant driver genes
+  signif_genes_table.datasets[[i]]$ActiveDriverWGS <- ActiveDriverWGS.res[[i]][ ActiveDriverWGS.res[[i]]$id %in%  signif_genes.datasets[[i]]$ActiveDriverWGS , ]
+  rownames(signif_genes_table.datasets[[i]]$ActiveDriverWGS) = NULL
+  
+  ##### Record sinigficant driver genes for each dataset and method
+  signif_genes.methods$ActiveDriverWGS[[i]] <- as.vector(signif_genes_table.datasets[[i]]$ActiveDriverWGS$id)
+  
+  ##### Organise the table of significant genes
+  signif_genes_table.datasets[[i]]$ActiveDriverWGS <- signif_genes_table.datasets[[i]]$ActiveDriverWGS[ , c("id", "pp_element", "fdr_element", "element_muts_obs", "element_muts_exp")]
+}
+
+##### Remove directory for storing recovery files once analyses are finished
+if ( file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
+  unlink(paste(outDir, "ActiveDriverWGS_recovery", sep="/"), recursive=TRUE)
 }
 ```
 
@@ -1161,7 +1320,11 @@ for ( i in 1:length(mafFiles) ) {
     if ( "OncodriveCLUST" %in% names(signif_genes.datasets[[i]]) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUST"], decreasing = TRUE),  ] 
     }
-
+    
+    if ( "ActiveDriverWGS" %in% names(signif_genes.datasets[[i]]) ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "ActiveDriverWGS"], decreasing = TRUE),  ] 
+    }
+    
     signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "Total"], signif_genes.upset.mod[[i]][, "dNdScv"], signif_genes.upset.mod[[i]][, "dNdSloc"], decreasing = TRUE),  ] 
     
     for ( j in 1:length(signif_genes.datasets[[i]]) ) {
@@ -1209,6 +1372,11 @@ for ( i in 1:length(mafFiles) ) {
     ##### Add "chr" to chromosome numbers
     gene_info$Chromosome <- paste0("chr", gene_info$Chromosome)
     signif_genes.annot[[i]] <- gene_info
+    
+    ##### Re-order genes
+    rownames(signif_genes.annot[[i]]) <- signif_genes.annot[[i]]$Gene
+    signif_genes.annot[[i]] <- signif_genes.annot[[i]][ signif_genes[[i]], ]
+    signif_genes.annot[[i]] <- signif_genes.annot[[i]][ !is.na(signif_genes.annot[[i]]$Gene), ]
   }
 }
 
@@ -1308,13 +1476,13 @@ if ( params$samples_blacklist != "none" ) {
 }
 ```
 
-`r if ( length(unlist(hypermut_samples)) > 0 ) { c("***") }`
+`r if ( hypermut_samples_status ) { c("***") }`
 
-`r if ( length(unlist(hypermut_samples)) > 0 ) { c("#### Hypermutator samples") }`
+`r if ( hypermut_samples_status ) { c("#### Hypermutator samples") }`
 
-`r if ( length(unlist(hypermut_samples)) > 0 ) { c(paste0("Table(s) listing sample(s) with >",  params$hypermut_sample_cutoff, " coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.")) }`
+`r if ( hypermut_samples_status ) { c(paste0("Table(s) listing sample(s) with >",  params$hypermut_sample_cutoff, " coding mutations. These have been removed from the analyses to protect against loss of sensitivity from ultra-hypermutators.")) }`
 
-```{r hypermutator_samples, comment = NA, message=FALSE, warning=FALSE}
+```{r hypermutator_samples, comment = NA, message=FALSE, warning=FALSE, eval=hypermut_samples_status}
 ##### Present results summary table in the html report
 if ( length(unlist(hypermut_samples)) > 0 ) {
   
@@ -1403,19 +1571,7 @@ if ( params$genes_blacklist != "none" ) {
 
 Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
 
-<span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
-
 ***
-
-<details>
-<summary>Variants consequence definitions</summary>
-<font size="2">
-
-* **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
-* **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
-
-</font> 
-</details>
 
 <details>
 <summary>dNdScv model</summary>
@@ -1446,13 +1602,11 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 * Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
 * Maximum mutations per gene in same sample: **`r params$max_muts_per_gene`**
-* Mutations per gene to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
+* Number of coding mutations to define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff`**
 * P-value threshold for reporting cancer driver genes: **`r params$dnds_p`**
 * Q-value threshold for reporting cancer driver genes: **`r params$dnds_q`**
 
 **Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff` coding mutations) are removed and **mutations with > `r params$max_muts_per_gene` mutations per gene** in the same sample are subsampled to protect against loss of sensitivity from ultra-hypermutators and from clustered artefacts.
-
-<span style="color:#ff0000">NOTE</span>: by default, it is assumed that mutation data is mapped to the **GRCh37/hg19**. The *buildref* function (described [here](http://htmlpreview.github.io/?http://github.com/im3sanger/dndscv/blob/master/vignettes/buildref.html){target="_blank"}) can be used to generate the necessary reference file to run [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} on others assembly.
 
 </font> 
 </details>
@@ -1463,8 +1617,8 @@ The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r 
 
 ##### dNdScv
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all non-synonymous substitutions detected in individual genes. 
-`r if ( dNdS_cov ) { c("The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.") } else { c("The *colour* of the points is proportional to -log10 *p-values* based on non-synonymous substitutions without indels.") }`
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all substitutions detected in individual genes. 
+`r if ( dNdS_cov ) { c("The *colour* scale reflects *p-values* computed for indels, with purple and yellow indicating low and high *p-values*, respectively.") } else { c("The *colour* of the points is proportional to -log10 *p-values* based on substitutions without indels.") }`
 
 ```{r dndscv_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1530,7 +1684,7 @@ widges.list
 
 ##### dNdSloc
 
-*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *p-values* (in -log10 scale) based on all non-synonymous substitutions. The *size* of the points is proportional to -log10 *p-values* based exclusively on missense substitutions detected in individual genes.
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *p-values* (in -log10 scale) based on all substitutions. The *size* of the points is proportional to -log10 *p-values* based exclusively on missense substitutions detected in individual genes.
 
 ```{r dndsloc_plot, comment = NA, message=FALSE, warning=FALSE}
 suppressMessages(library(plotly))
@@ -1719,7 +1873,32 @@ widges.list
 </font> 
 </details>
 
+`r if ( nrow(hypermut_samples[[i]]) > 0 ) { c("***") }`
+
+`r if ( nrow(hypermut_samples[[i]]) > 0 ) { c("#### Hypermutators") }`
+
+`r if ( nrow(hypermut_samples[[i]]) > 0 ) { c(paste0("Table(s) listing **ultra-hypermutator** samples with > ", params$hypermut_sample_cutoff, " mutations per gene in coding mutations. These have been removed from the analysis since hypermutator samples often reduce power to detect selection.")) }`
+
+```{r hypermutators, comment = NA, message=FALSE, warning=FALSE}
+##### Present results summary table in the html report
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+    
+  widges.list[[i]] <- DT::datatable( data = hypermut_samples[[i]], caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(exclmuts[[i]]), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(hypermut_samples[[i]]), 'text-align' = 'center' )
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
 ***
+
 #### Subsampled mutations
 
 Table(s) listing coding mutations within genes with > `r params$max_muts_per_gene` mutations per gene in same sample. These have been removed from the analysis to protect against loss of sensitivity from clustered artefacts.
@@ -1741,6 +1920,119 @@ widges.list
 ##### Add extra lines to make sure that this section doesn't overlap with the next one
 cat("\n\n\n")
 ```
+
+***
+
+### ActiveDriverWGS {.tabset}
+
+Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Zhu et al., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"}). [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} is a recurrence-based method which builds on the idea that driver mutations are subject to positive selection and should appear more frequently than expected by chance alone. This method analyzes the mutational burden of SNVs and short indels (less than 50bps) in functionally defined genomic elements.
+
+***
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<details>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<summary>Analysed genes</summary>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("<font size=\"2\">") }`
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { ActiveDriverWGS.genes }`
+
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("</font>") }`
+`r if ( !is.null(ActiveDriverWGS.genes) ) { paste0("</details>") }`
+
+<details>
+<summary>Input parameters</summary>
+<font size="2">
+
+* Genome assembly version: **`r paste0("hg", params$ucsc_genome_assembly)`**
+* Number of mutations per megabase define ultra-hypermutator samples: **`r params$hypermut_sample_cutoff/100`**
+* P-value threshold for reporting cancer driver genes: **`r params$activedriverwgs_p`**
+* False discovery rate (FDR) threshold for reporting cancer driver genes: **`r params$activedriverwgs_fdr`**
+
+**Ultra-hypermutator samples** (with > `r params$hypermut_sample_cutoff/100` mutations) are excluded as hyper-mutated samples carry many passenger mutations and dilute the signal of true drivers.
+
+</font> 
+</details>
+
+***
+
+#### Plots
+
+*X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all substitutions detected in individual genes. The *colour* scale reflects -log10 *False discovery rate* (FDR), with purple and yellow indicating low and high values, respectively.
+
+```{r ActiveDriverWGS_plot, comment = NA, message=FALSE, warning=FALSE}
+suppressMessages(library(plotly))
+
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( nrow(signif_genes_table.datasets[[i]]$ActiveDriverWGS) > 0 ) {
+      
+    ##### Avoid p-values of 0 by assigning 1*10^-16 to extremely low p-values
+    pp_element <- signif_genes_table.datasets[[i]]$ActiveDriverWGS$pp_element
+    pp_element[ pp_element == 0 ] <- 1*10^-16
+    fdr_element <- signif_genes_table.datasets[[i]]$ActiveDriverWGS$fdr_element
+    fdr_element[ fdr_element == 0 ] <- 1*10^-16
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(signif_genes_table.datasets[[i]]$ActiveDriverWGS$id, -log(pp_element,10), signif_genes_table.datasets[[i]]$ActiveDriverWGS$element_muts_obs, -log(fdr_element,10) )
+    colnames(data.df) <- c("gene", "pp_element", "element_muts_obs", "fdr_element")
+    
+    ##### Calculate x and y axis rangeby adding 10% of the original range
+    x_range <- c(0, max(data.df$element_muts_obs) + max(data.df$element_muts_obs)*0.1)
+    y_range <- c(0, max(data.df$pp_element) + max(data.df$pp_element)*0.1)
+    
+    ##### Generate scatter-plot
+    widges.list[[i]] <- plot_ly(data.df, x = ~element_muts_obs, y = ~pp_element, color = data.df$fdr_element, size = ~pp_element, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      add_text(textfont = list(size = 10), textposition = "top") %>%
+      layout(title = datasets.list[i], xaxis = list(title = "Number of mutations", range = x_range), yaxis = list(title = "-log10( p-value )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+    
+    ##### Save the plot as html (PLOTLY)
+    saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_ActiveDriverWGS_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
+    
+  } else {
+      cat(paste0("None of the mutated genes demonstrated significant p-value in dataset ", datasets.list[i], "\n\n"))
+  }
+}
+
+##### Detach plotly package. Otherwise it clashes with other graphics devices
+detach("package:plotly", unload=FALSE)
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+***
+
+#### Cancer driver genes
+
+Table(s) presenting per-dataset [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} results, including *p-values*, *false discovery rate (FDR)*, *number of mutations in individual samples*, as well as the *expected number of mutations in individual samples*.
+
+```{r ActiveDriverWGS_results_summary, comment = NA, message=FALSE, warning=FALSE}
+##### Present dndscv results summary table in the html report
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+    widges.list[[i]] <- DT::datatable( data = signif_genes_table.datasets[[i]]$ActiveDriverWGS, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(signif_genes_table.datasets[[i]]$ActiveDriverWGS), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+      DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$ActiveDriverWGS), 'text-align' = 'center' ) %>%
+      formatRound(columns = c("pp_element", "fdr_element"), 6)
+}
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+<details>
+<summary>Table legend</summary>
+<font size="2">
+
+* **pp_element** - the *p-value* associated with enrichment of mutations in the element
+* **fdr_element** - *FDR* corrected *p-value* associated with the element
+* **element_muts_obs** - number of patients with mutations in the element
+* **element_muts_exp** - expected number of patients with mutations in the element
+
+</font> 
+</details>
 
 ***
 
@@ -1777,7 +2069,7 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 
 #### Plot
 
-The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) values in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
+The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
 ```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
 suppressMessages(library(plotly))
@@ -1834,7 +2126,7 @@ widges.list
 
 #### Cancer driver genes
 
-Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR) values*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
+Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR)*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
 ```{r oncodriveCLUST_table, comment=NA, warning=FALSE, eval = runOncodriveClustChunk}
 ##### Generate tables with oncodriveCLUST results
@@ -2338,6 +2630,38 @@ if ( pchangeStatus ) {
 
 ***
 
+### ActiveDriverWGS {.tabset}
+
+```{r lollipop_plots_ActiveDriverWGS, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  genes <- unique(verify_genes(unlist(signif_genes.methods$ActiveDriverWGS)))
+  
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$ActiveDriverWGS)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
+
+} else {
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
+}
+```
+
+***
+
 `r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset}") } else { c(" ") }`
 
 ```{r lollipop_plots_OncodriveCLUST, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodriveClustChunk}
@@ -2472,6 +2796,34 @@ widges.list <- htmltools::tagList()
 for ( i in 1:length(mafFiles) ) {
   
   annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$dNdSloc[[i]], ]
+  
+  ##### Move gene name to the first column
+  col_idx <- grep("gene", names(annotmuts))
+  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
+  
+  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+### ActiveDriverWGS
+
+```{r mutations_annotation_ActiveDriverWGS, comment = NA, message=FALSE, warning=FALSE}
+##### Present results summary table in the html report
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$ActiveDriverWGS[[i]], ]
   
   ##### Move gene name to the first column
   col_idx <- grep("gene", names(annotmuts))
@@ -2675,6 +3027,48 @@ widges.list
 cat("\n\n\n")
 ```
 
+***
+
+### ActiveDriverWGS {.tabset .tabset-fade}
+
+#### Non-synonymous
+
+```{r details_mut_ActiveDriverWGS_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ActiveDriverWGS[[i]], type = "nonsynonymous")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
+#### Silent
+
+```{r details_mut_ActiveDriverWGS_silent, comment = NA, message=FALSE, warning=FALSE}
+##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ActiveDriverWGS[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
 `r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
 
 `r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset .tabset-fade}") } else { c(" ") }`
@@ -2855,13 +3249,25 @@ cat("\n\n\n")
 
 Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(methods, collapse = ", ")`**.
 
-```{r circos_prep, comment = NA, message=FALSE, warning=FALSE}
+```{r circos_prep, comment = NA, message=FALSE, warning=FALSE, results="asis"}
 ##### Prepare circos plot with cancer driver genes detected by various methods
 signif_genes.excl <- vector("list", length(mafFiles))
 names(signif_genes.excl) <- datasets.list
 
+signif_genes.standard <- vector("list", length(mafFiles))
+names(signif_genes.standard) <- datasets.list
+
+signif_genes.excess <- vector("list", length(mafFiles))
+names(signif_genes.excess) <- datasets.list
+
+signif_genes.plotted <- vector("list", length(mafFiles))
+names(signif_genes.plotted) <- datasets.list
+
 signif_genes.incl <- vector("list", length(mafFiles))
 names(signif_genes.incl) <- datasets.list
+
+signif_genes.all<- vector("list", length(mafFiles))
+names(signif_genes.all) <- datasets.list
 
 for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
@@ -2870,8 +3276,36 @@ for ( i in 1:length(mafFiles) ) {
     
     ##### Check if all driver genes are located in standard chromosomes
     signif_genes.excl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %!in% cyto.info$Chromosome,  ]
-    signif_genes.incl[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %in% cyto.info$Chromosome,  ]
+    signif_genes.standard[[i]] <- signif_genes.annot[[i]][ signif_genes.annot[[i]]$Chromosome %in% cyto.info$Chromosome,  ]
     
+    ##### There is a limit of number of gene labels on the circos plot so select only so of the detected driver genes to meet these limits in case there are more driver genes than allowed on the plot
+    ##### Define number of allowed genes in each chromosome
+    signif_genes.chr <- c(paste0("chr", rep(1:22)), "chrX", "chrY")
+    signif_genes.chr_max <- c(16,16,13,12,12,11,10,9,9,8,9,8,7,7,6,6,5,5,3,4,3,3,10,3)
+    
+    ##### Loop through each chromosome
+    for (j in 1:24) {
+      if ( nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]) > signif_genes.chr_max[j] ) {
+        
+        ##### Record driver genes that will NOT be plotted
+        signif_genes.excess[[i]] <- paste0(signif_genes.excess[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][(signif_genes.chr_max[j]+1):nrow(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])], collapse = ", "))
+        
+        ##### Record driver genes that will be plotted
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ][1:signif_genes.chr_max[j]], collapse = ", "))
+        signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ][1:signif_genes.chr_max[j],])
+        
+      } else if ( length(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]$Gene) > 0 ) {
+        ##### Record driver genes that will be plotted
+        signif_genes.plotted[[i]] <- paste0(signif_genes.plotted[[i]], "<br><b>", signif_genes.chr[j], "</b>: ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+        signif_genes.incl[[i]] <- rbind(signif_genes.incl[[i]], signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ])
+      }
+      
+      ##### Record all driver genes
+      if ( length(signif_genes.standard[[i]][ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] , ]$Gene) > 0 ) {
+        signif_genes.all[[i]] <- paste0(signif_genes.all[[i]], "<br><b>", signif_genes.chr[j], "</b> : ", paste0( signif_genes.standard[[i]]$Gene[ signif_genes.standard[[i]]$Chromosome == signif_genes.chr[j] ], collapse = ", "))
+      }
+    }
+        
     if ( nrow(signif_genes.incl[[i]]) > 100 ) {
       tracks.inside <- 8
       pointsize <- 22
@@ -2904,9 +3338,36 @@ for ( i in 1:length(mafFiles) ) {
     
     cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
     
+    ##### Genes that are plotted
+    cat("<details>")
+    cat("<summary>Driver genes in circos plot</summary>")
+    cat("<font size=\"2\">")
+    cat(signif_genes.plotted[[i]])
+    cat("</font>")
+    cat("</details>")
+    
+    ##### All driver genes
+    cat("<br><details>")
+    cat("<summary>All driver genes</summary>")
+    cat("<font size=\"2\">")
+    cat(signif_genes.all[[i]])
+    cat("</font>")
+    cat("</details>")
+    
+    ##### Genes that are NOT plotted
+    if ( !is.null(signif_genes.excess[[i]]) ) {
+      cat("<br><span style=\"color:#ff0000\">NOTE</span>: driver genes that did not fit in the circos plot are listed below")
+      cat("<details>")
+      cat("<summary>Unlabeled driver genes</summary>")
+      cat("<font size=\"2\">")
+      cat(signif_genes.excess[[i]])
+      cat("</font>")
+      cat("</details>")
+    }
+    
     ##### Report driver genes with missing genomic annotation
     if ( nrow(signif_genes.excl[[i]]) > 0 ) {
-      cat("* The genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot: ", paste(signif_genes.excl[[i]]$Gene, collapse = ", "), " \n\n", sep=" ")
+      cat("\nThe genomic location(s) for the following detected cancer driver gene(s) are not defined and thus are not presented on the circos plot: ", paste(signif_genes.excl[[i]]$Gene, collapse = ", "), " \n\n", sep=" ")
     }
     
     ##### Export pdf to png

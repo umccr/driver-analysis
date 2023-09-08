@@ -2,13 +2,17 @@
 
 Workflow for **selection analysis** and **cancer driver discovery** using the following methods:
 
-* **[dndscv](https://github.com/im3sanger/dndscv)** (see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details)
-* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)** (see paper by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480) for details)
-* **[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home)** (see paper by [Mularoni *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details)
-* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api)** (CGI) (see paper by [Tamborero et al., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details for details)
-* **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig)** (see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details, ...*work in progress*)
-* **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet)** (see preprint by [Reyna et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details, it is improved version of [HotNet2](https://github.com/raphael-group/hotnet2), ...*work in progress*)
-* **[CHASMplus](https://github.com/KarchinLab/CHASMplus)** (see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details, ...*work in progress*)
+* **[dndscv](https://github.com/im3sanger/dndscv)** (see paper by [Martincorena *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details)
+* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR)** (see paper by [Zhu *et al*, 2020](https://pubmed.ncbi.nlm.nih.gov/31954095) for details)
+* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering)** (see paper by [Tamborero *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480) for details)
+* **[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home)** (see paper by [Mularoni *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/27311963) for details)
+* **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api)** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813) for details for details)
+
+The following methods will potnetially be implemented soon:
+
+* **[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig)** (see paper by [Lawrence *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details)
+* **[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet)** (see preprint by [Reyna *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details, it is improved version of [HotNet2](https://github.com/raphael-group/hotnet2))
+* **[CHASMplus](https://github.com/KarchinLab/CHASMplus)** (see paper by [Tokheim and Karchin, preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details)
 
 The results from individual tools are **summarised** and **visualised** using *[driverAnalysis.R](./scripts/driverAnalysis.R)* script. 
 
@@ -19,12 +23,10 @@ The results from individual tools are **summarised** and **visualised** using *[
 * [Installation](#installation)
 * [Driver analysis tools](#driver-analysis-tools)
   * [dNdS](#dnds)
+  * [ActiveDriverWGS](#activedriverwgs)
   * [OncodriveClust](#oncodriveclust)
   * [OncodriveFML](#oncodrivefml)
   * [Cancer Genome Interpreter](#cancer-genome-interpreter)
-  * [MutSig](#mutsig)
-  * [Hierarchical HotNet](#hierarchical-hotnet)
-  * [CHASMplus](#chasmplus)
 * [Driver analysis summary](#driver-analysis-summary)
     * [Usage](#usage)
     * [Arguments](#arguments)
@@ -56,7 +58,13 @@ conda activate driver-analysis
 
 ### dNdS
 
-The ***[dnds](https://github.com/im3sanger/dndscv)*** (including *dndscv* and *dNdSloc* models, see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details) method is implemented in *[driverAnalysis.R](./scripts/driverAnalysis.R)* script described in [Driver analysis summary](#driver-analysis-summary) section.
+The **[dnds](https://github.com/im3sanger/dndscv)** (including *dndscv* and *dNdSloc* models, see paper by [Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346) for details) method is implemented in *[driverAnalysis.R](./scripts/driverAnalysis.R)* script described in [Driver analysis summary](#driver-analysis-summary) section.
+
+<br>
+
+### ActiveDriverWGS
+
+The **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR)** (see paper by [Zhu *et al*, 2020](https://pubmed.ncbi.nlm.nih.gov/31954095) for details) method is implemented in *[driverAnalysis.R](./scripts/driverAnalysis.R)* script described in [Driver analysis summary](#driver-analysis-summary) section.
 
 <br>
 
@@ -83,30 +91,6 @@ This tool is freely available through a web interface at [http://www.cancergenom
 The CGI resource can also be accessed programmatically by an API created via REST. Only registered users can make use of the API, since a token is needed for any communication between the end user and the REST API. Further details can be found at [https://www.cancergenomeinterpreter.org/api/v1](https://www.cancergenomeinterpreter.org/rest_api) and information about acceptable input format can be found at [https://www.cancergenomeinterpreter.org/formats](https://www.cancergenomeinterpreter.org/formats).
 
 For more details about the [usage](OncodriveFML.md#running-the-analysis) and [output](OncodriveFML.md#output) see documentaion in [CGI.md](CGI.md).
-
-<br>
-
-### MutSig
-
-...work in progress
-
-[MutSig](http://software.broadinstitute.org/cancer/cga/mutsig), see paper by [Lawrence et al., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23770567) for details.
-
-<br>
-
-### Hierarchical HotNet
-
-...work in progress
-
-[Hierarchical HotNet](https://github.com/raphael-group/hierarchical-hotnet), see paper by [Reyna et al., 2015](https://www.ncbi.nlm.nih.gov/pubmed/30423088) for details.
-
-<br>
-
-### CHASMplus
-
-...work in progress
-
-[CHASMplus](https://github.com/KarchinLab/CHASMplus), see paper by [Tokheim and Karchin., preprint](https://www.biorxiv.org/content/10.1101/313296v4) for details.
 
 <br>
 
@@ -137,11 +121,15 @@ Argument | Description | Required
 --samples_id_cols | The name(s) of MAF file(s) column containing samples' IDs. One column name is expected for a single file, and each separated by comma. The defualt samples' ID column is `Tumor_Sample_Barcode` | No
 --dnds_p | dN/dS method p-value threshold for reporting significant genes (defualt is `0.05`) | No
 --dnds_q | dN/dS method q-value threshold for reporting significant genes (defualt is `1`) | No
+--activedriverwgs_p | [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) method p-value threshold for reporting significant genes (defualt is `0.05`) | No
+--activedriverwgs_fdr | [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) method FDR threshold for reporting significant genes (defualt is `1`) | No
+--activedriverwgs_cores | Number of cores to be used for running [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) (defualt is `1`) | No
+--activedriverwgs_all_genes | Run [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR) for all genes (defualt is `FALSE` where the analysed regions will be limited to genes listed in [cancer genes](data/umccr_cancer_genes.2019-03-20.tsv)) | No
 --oncodriveclust_fdr | OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes (defualt is `0.5`) | No
 --ratios_ci | Calculate per-gene confidence intervals for the dN/dS ratios (default is `FALSE`) | No
 --hypermut_sample_cutoff | Mutations per gene to define ultra-hypermutator samples (these will be excluded; defualt is `250`) | No
 --max_muts_per_gene | Maximum mutations per gene in same sample (remaining will be subsampled; defualt is `3`) | No
---genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL). NOTE, this option is implemented only in [dNdS](#dnds) method and relevant for targeted sequencing studies | No
+--genes_list | Location and name of a file listing genes of interest to be considered in the report (OPTIONAL). NOTE, this option is implemented only in [dNdS](#dnds) and [ActiveDriverWGS](#activedriverwgs) methods | No
 --genes_blacklist | Location and name of a file listing genes to be excluded (OPTIONAL). Header is not expected and the genes should be listed in separate lines | No
 --samples_blacklist | Location and name of a file listing samples to be excluded (OPTIONAL). The ID of samples to be excluded are expected to be listed in column named `Tumor_Sample_Barcode`. Additional columns are allowed | No
 --nonSyn_list | List of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants. Default uses [Variant Classifications](http://asia.ensembl.org/Help/Glossary?id=535) with `High/Moderate variant consequences` | No

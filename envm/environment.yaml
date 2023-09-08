@@ -20,10 +20,12 @@ dependencies:
         - r-rmarkdown
         - r-optparse
         - r-dndscv
+        - r-activedriverwgs
         - r-ggplot2
         - r-dt
         - r-upsetr
         - r-stringr
+        - r-pdftools
         - r-plotly=4.9.0
         - r-magick
         - r-rcircos
@@ -31,6 +33,8 @@ dependencies:
         - r-dplyr
         - bioconductor-ensdb.hsapiens.v75
         - bioconductor-ensdb.hsapiens.v86
+        - bioconductor-bsgenome.hsapiens.ucsc.hg19
+        - bioconductor-bsgenome.hsapiens.ucsc.hg38
         - bioconductor-iranges
         - bioconductor-maftools
         - python-dateutil
