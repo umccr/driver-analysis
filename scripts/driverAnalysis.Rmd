@@ -757,7 +757,7 @@ for ( i in 1:length(mafFiles) ) {
 
 ```{r dndscv_format_data, comment = NA, message=FALSE, warning=FALSE }
 ##### The input data is supposed to be a data.frame with five columns (sampleID, chr, pos, ref [base], mutant [base])
-##### Convert the MAF calss objest to the format relevant for dndscv
+##### Convert the MAF calls object to the format relevant for dndscv
 ##### NOTE, silent mutations are also included
 dndscvInfo <- vector("list", length(mafFiles))
 names(dndscvInfo) <- datasets.list
@@ -767,13 +767,13 @@ for ( i in 1:length(mafFiles) ) {
   dndscvInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("Tumor_Sample_Barcode", "Chromosome", "Start_Position", "Reference_Allele", "Tumor_Seq_Allele2")], mafInfo[[i]]@maf.silent[, c("Tumor_Sample_Barcode", "Chromosome", "Start_Position", "Reference_Allele", "Tumor_Seq_Allele2")])
   names(dndscvInfo[[i]]) <- c("sampleID", "chr", "pos", "ref", "mut")
   
-  ##### Make sure that the chromosome numbers start with "chr"
-  #if ( !is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
+  ##### Make sure that the chromosome numbers start with "chr"if using v38 https://github.com/im3sanger/dndscv/issues/32
+  #if ( params$ucsc_genome_assembly == 38 && is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
   #  dndscvInfo[[i]]$chr <- paste0("chr", dndscvInfo[[i]]$chr)
   #}
   
-  ##### Make sure that the chromosome numbers does NOT start with "chr"
-  if ( is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
+  ##### Make sure that the chromosome numbers does NOT start with "chr" if using v19
+  if ( params$ucsc_genome_assembly == 19 && !is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
     dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
   }
   
@@ -782,9 +782,9 @@ for ( i in 1:length(mafFiles) ) {
   
   dndscvInfo[[i]] <- dndscvInfo[[i]][ !is.na(dndscvInfo[[i]]$chr), ]
   
-  if ( is.numeric(dndscvInfo[[i]]$chr) ) {
-    dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
-    
+    #if ( is.numeric(dndscvInfo[[i]]$chr) ) {
+    #dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
+    #}
     
   }
 }
@@ -940,7 +940,7 @@ for ( i in 1:length(mafFiles) ) {
 ```
 
 ```{r exclude_hypermutators, comment = NA, message=FALSE, warning=FALSE}
-##### Exclude hypermutators from MAF object based on user-derined threshold
+##### Exclude hypermutators from MAF object based on user-defined threshold
 mafInfo.all <- mafInfo
 
 for ( i in 1:length(mafFiles) ) {
@@ -959,7 +959,7 @@ for ( i in 1:length(mafFiles) ) {
 
 ```{r ActiveDriverWGS_format_data, comment = NA, message=FALSE, warning=FALSE }
 ##### The input data is supposed to be a data.frame with six columns (chr, pos1, pos2, ref, alt, and patient)
-##### Convert the MAF calss objest to the format relevant for ActiveDriverWGS
+##### Convert the MAF calls object to the format relevant for ActiveDriverWGS
 ##### NOTE, silent mutations are also included
 ActiveDriverWGSInfo <- vector("list", length(mafFiles))
 names(ActiveDriverWGSInfo) <- datasets.list
@@ -992,7 +992,7 @@ for ( i in 1:length(mafFiles) ) {
   ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ , -c("SYMBOL")]
   
   ##### Make sure that the chromosome numbers start with "chr"
-  if ( is.na(match("chr", ActiveDriverWGSInfo[[i]]$chr)) ) {
+  if ( !is.na(match("chr", ActiveDriverWGSInfo[[i]]$chr)) ) {
     ActiveDriverWGSInfo[[i]]$chr <- paste0("chr", ActiveDriverWGSInfo[[i]]$chr)
   }
   
@@ -1072,7 +1072,7 @@ for ( i in 1:length(mafFiles) ) {
   signif_genes_table.datasets[[i]]$ActiveDriverWGS <- ActiveDriverWGS.res[[i]][ ActiveDriverWGS.res[[i]]$id %in%  signif_genes.datasets[[i]]$ActiveDriverWGS , ]
   rownames(signif_genes_table.datasets[[i]]$ActiveDriverWGS) = NULL
   
-  ##### Record sinigficant driver genes for each dataset and method
+  ##### Record significant driver genes for each dataset and method
   signif_genes.methods$ActiveDriverWGS[[i]] <- as.vector(signif_genes_table.datasets[[i]]$ActiveDriverWGS$id)
   
   ##### Organise the table of significant genes
