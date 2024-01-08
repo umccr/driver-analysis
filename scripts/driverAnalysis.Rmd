@@ -117,7 +117,7 @@ verify_genes <- function(genes) {
   return( genes.verified )
 }
 
-##### Perfrom oncodrive analysis. Clusters variants based on their position to detect disease causing genes
+##### Perform oncodrive analysis. Clusters variants based on their position to detect disease causing genes
 oncodrive_analysis <- function(mafInfo, dataset, gl) {
   
   ##### Check if the amino acid changes information is available in MAF provided files. The script expects column called "HGVSp_Short", which is produced with vcf2maf (https://github.com/mskcc/vcf2maf) when converting VCFs to MAFs (https://github.com/cBioPortal/cbioportal/issues/2996) and describes a mutation's amino acid change. The "aa_mutation" field used for annotation in ICGC samples is also acceptable. NOTE: other possibilities are: "Protein_Change", "AAChange""
@@ -129,7 +129,7 @@ oncodrive_analysis <- function(mafInfo, dataset, gl) {
   ##### Check if the protein change field is not empty
   if ( any(!is.na(as.data.frame(mafInfo@data)[ , pchange  ]))  ) {
         
-    ##### Check whether it's possible to run oncodrive analysis for given dataset by calculating cluster scores
+    ##### Check whether it's possible to run oncodrive analysis for a given dataset by calculating cluster scores
     nonsyn.scores <- parse_prot(mafInfo, AACol = pchange, gl = gl, m = 5, calBg = FALSE, nBg = 100)
       
     if ( !is.null(nonsyn.scores) ) {
@@ -150,7 +150,7 @@ oncodrive_analysis <- function(mafInfo, dataset, gl) {
   return(list(sig, oncodrive.plot))
 }
 
-##### Functon to calcluate cluster score (from https://rdrr.io/github/PoisonAlien/maftools/src/R/clusterScore.R). It's required in order check whether it's possible to run oncodrive analysis for given dataset
+##### Function to calculate cluster score (from https://rdrr.io/github/PoisonAlien/maftools/src/R/clusterScore.R). It's required in order to check whether it's possible to run oncodrive analysis for a given dataset
 parse_prot <- function(dat, AACol, gl, m, calBg = FALSE, nBg){
 
   mafInfo <- dat
@@ -236,7 +236,7 @@ parse_prot <- function(dat, AACol, gl, m, calBg = FALSE, nBg){
   }
 }
 
-###### Estimate threshhold based on binaomial distribution (from https://rdrr.io/github/PoisonAlien/maftools/src/R/clusterScore.R). Required for parse_prot function
+###### Estimate threshhold based on binomial distribution (from https://rdrr.io/github/PoisonAlien/maftools/src/R/clusterScore.R). Required for parse_prot function
 get_threshold <- function(gene_muts, gene_length){
   th = which(unlist(lapply(X = 2:gene_muts, FUN = function(x) dbinom(x = x, size = gene_muts, prob = 1/gene_length) )) < 0.01)[1]
   return(th+1)
@@ -455,7 +455,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
       ##### ...otherwise leave a message
       } else {
         
-        ##### Check if the genes has any synonymous vatiants
+        ##### Check if the genes has any synonymous variants
         if ( length(pchange[pchange %in% colnames(mafInfo[[dataset]]@maf.silent)]) > 0 && gene %in% mafInfo[[dataset]]@maf.silent$Hugo_Symbol && any(!is.na(as.data.frame(mafInfo[[dataset]]@maf.silent)[ , pchange  ])) ) {
         
           cat(paste("This section was skipped for dataset", dataset, "since only synonymous variants were detected in", gene, "gene.\n\n", sep=" "))
@@ -657,14 +657,14 @@ if ( params$cgi != "none" ){
   }
 }
 
-##### Initiate a list to record sinigficant driver genes for each dataset
+##### Initiate a list to record significant driver genes for each dataset
 signif_genes.datasets <- vector("list", length(mafFiles))
 names(signif_genes.datasets) <- datasets.list
 
 signif_genes_table.datasets <- vector("list", length(mafFiles))
 names(signif_genes_table.datasets) <- datasets.list
 
-##### Initiate a list to record sinigficant driver genes for each method
+##### Initiate a list to record significant driver genes for each method
 methods <- c("dNdScv", "dNdSloc", "ActiveDriverWGS", "OncodriveCLUST")
 
 if ( runOncodrivefmlChunk ) {
@@ -680,7 +680,7 @@ names(signif_genes.methods) <- methods
 ```
 
 ```{r exclude_samples, comment = NA, message=FALSE, warning=FALSE}
-##### Exclude user-derined samples(s) from the analysis
+##### Exclude user-defined samples(s) from the analysis
 if ( params$samples_blacklist != "none" ) {
   for ( i in 1:length(mafFiles) ) {
       
@@ -701,7 +701,7 @@ if ( params$samples_blacklist != "none" ) {
 ```
 
 ```{r exclude_genes, comment = NA, message=FALSE, warning=FALSE}
-##### Exclude user-derined gene(s) from the analysis
+##### Exclude user-defined gene(s) from the analysis
 if ( params$genes_blacklist != "none" ) {
   for ( i in 1:length(mafFiles) ) {
     
@@ -732,12 +732,12 @@ MAF_samples.silent.df <- NULL
 ##### Loop through MAF files
 for ( i in 1:length(mafFiles) ) {
   
-  ##### Identify samples with no non-synonymours variants according to corresponding MAF file
+  ##### Identify samples with no non-synonymous variants according to corresponding MAF file
   MAF_samples[[i]]$all <- unlist(unique(mafInfo[[i]]@maf.silent[, "Tumor_Sample_Barcode"]))
   MAF_samples[[i]]$nonsyn <- unlist(maftools::getSampleSummary(mafInfo[[i]])[, "Tumor_Sample_Barcode"])
   MAF_samples[[i]]$silent <-  MAF_samples[[i]]$all[ MAF_samples[[i]]$all %!in% MAF_samples[[i]]$nonsyn  ]
   
-  ##### Check if there thre are any samples with no non-synonymours variants. If so, add them to data frame
+  ##### Check if there there are any samples with no non-synonymous variants. If so, add them to data frame
   if ( length(MAF_samples[[i]]$silent) > 0 ) {
     for ( sample in MAF_samples[[i]]$silent ) {
       
@@ -821,7 +821,7 @@ for ( i in 1:length(mafFiles) ) {
       ci[[i]] = geneci(dndsout[[i]])
     }
     
-  ##### Run analysis for all genes
+  ##### Run analysis for all genes - peek into specified params at https://rdrr.io/github/im3sanger/dndscv/src/R/dndscv.R
   } else {
     
     if ( dNdS_cov ) {
@@ -928,7 +928,7 @@ for ( i in 1:length(mafFiles) ) {
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$dNdSloc <- signif_genes_table.datasets[[i]]$dNdSloc[ , c("gene_name", "pall_loc", "qall_loc", "n_syn", "n_mis", "n_non", "n_spl", "wmis_loc", "pmis_loc", "qmis_loc", "wnon_loc", "wspl_loc")]
     
-  ##### Record sinigficant driver genes for each dataset and method
+  ##### Record significant driver genes for each dataset and method
   signif_genes.datasets[[i]] <- list(dNdScv = as.character(signif_genes_table.datasets[[i]]$dNdScv$gene_name), dNdSloc = as.character(signif_genes_table.datasets[[i]]$dNdSloc$gene_name))
   
   signif_genes.methods$dNdScv[[i]] <- as.character(signif_genes_table.datasets[[i]]$dNdScv$gene_name)
