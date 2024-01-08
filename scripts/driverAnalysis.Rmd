@@ -867,8 +867,9 @@ names(signif_genes.methods$dNdSloc) <- datasets.list
   
 for ( i in 1:length(mafFiles) ) {
   
-  ##### Calculate theta estimtates
+  ##### Calculate theta estimates for substitutions and indels
   theta[[i]] <- round(dndsout[[i]]$nbreg$theta, digits = 2)
+  theta_indels[[i]] <- round(dndsout[[i]]$nbregind$theta, digits = 2)
   
   ##### Get a table of significant genes
   sel_cv[[i]] <- dndsout[[i]]$sel_cv
