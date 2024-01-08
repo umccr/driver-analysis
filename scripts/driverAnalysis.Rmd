@@ -775,17 +775,14 @@ for ( i in 1:length(mafFiles) ) {
   ##### Make sure that the chromosome numbers does NOT start with "chr" if using v19
   if ( params$ucsc_genome_assembly == 19 && !is.na(match("chr", dndscvInfo[[i]]$chr)) ) {
     dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
-  }
-  
-  
-  dndscvInfo[[i]]$chr <- as.numeric(dndscvInfo[[i]]$chr)
-  
+    
+    dndscvInfo[[i]]$chr <- as.numeric(dndscvInfo[[i]]$chr)
+    
   dndscvInfo[[i]] <- dndscvInfo[[i]][ !is.na(dndscvInfo[[i]]$chr), ]
   
     #if ( is.numeric(dndscvInfo[[i]]$chr) ) {
     #dndscvInfo[[i]]$chr <- gsub("chr", "", dndscvInfo[[i]]$chr)
     #}
-    
   }
 }
 ```
@@ -1051,7 +1048,7 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Suppress automatic output to console
   sink("/dev/null")
-  ##### NOTE: the analysis crash when "recovery.dir" paramter (for storing recovery files) is used so currnelty it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
+  ##### NOTE: the analysis crash when "recovery.dir" parameter (for storing recovery files) is used so currenlty it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
   ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, filter_hyper_MB = params$hypermut_sample_cutoff/100, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
   sink() 
 
@@ -1061,7 +1058,7 @@ for ( i in 1:length(mafFiles) ) {
   ActiveDriverWGS.res[[i]] <- ActiveDriverWGS.res[[i]][ order( ActiveDriverWGS.res[[i]]$element_enriched, decreasing = TRUE), ]
   rownames(ActiveDriverWGS.res[[i]]) = NULL
 
-  ##### Record sinigficant driver genes for each dataset
+  ##### Record significant driver genes for each dataset
   signif_genes.datasets[[i]]$ActiveDriverWGS <- unique(c(ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$pp_element <= params$activedriverwgs_p & ActiveDriverWGS.res[[i]]$fdr_element <= params$activedriverwgs_fdr ]))
   signif_genes.datasets[[i]]$ActiveDriverWGS <- signif_genes.datasets[[i]]$ActiveDriverWGS[ signif_genes.datasets[[i]]$ActiveDriverWGS %in% ActiveDriverWGS.res[[i]]$id[ ActiveDriverWGS.res[[i]]$element_enriched ] ]
   
@@ -3400,7 +3397,7 @@ for ( i in 1:length(mafFiles) ) {
     
     cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
     
-    png( file = paste(outDir, "/driver_analysis_upset_", datasets.list[i], ".png", sep = ""), width = 1800, height = 800, units = "px", res = 200, type="cairo" )
+    png( file = paste(outDir, "/driver_analysis_upset_", datasets.list[i], ".png", sep = ""), width = 1800, height = 800, units = "px", res = 200 )
     
     upset.image <- capture.output(upset(as.data.frame(t(signif_genes.upset[[i]])), sets = colnames(t(signif_genes.upset[[i]])), sets.bar.color = "#56B4E9", order.by = "freq", empty.intersections = "on", sets.x.label = "Total genes no.", mb.ratio = c(0.5, 0.5)))
     invisible(dev.off())
