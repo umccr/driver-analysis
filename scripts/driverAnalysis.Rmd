@@ -173,7 +173,7 @@ parse_prot <- function(dat, AACol, gl, m, calBg = FALSE, nBg){
 
   all.prot.dat = dat[,.(Hugo_Symbol, Variant_Classification, AAChange)]
   all.prot.dat = all.prot.dat[Variant_Classification != 'Splice_Site']
-  #parse AAchanges to get postion
+  #parse AAchanges to get position
   prot.spl = strsplit(x = as.character(all.prot.dat$AAChange), split = '.', fixed = TRUE)
   prot.conv = sapply(sapply(prot.spl, function(x) x[length(x)]), '[', 1)
 
@@ -344,7 +344,7 @@ cluster_prot <- function(prot.dat, gene, th, protLen){
   return(gene.clust.res)
 }
 
-###### Generate dataTable for each dataset with all mutation information for selected gene(s), as provided in MAF files. User can filter variants to include only non-synonymous (defualt), silent or all variants
+###### Generate dataTable for each dataset with all mutation information for selected gene(s), as provided in MAF files. User can filter variants to include only non-synonymous (default), silent or all variants
 mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous") {
   
   ##### Vector with datasets with no mutations reported in selected genes
@@ -971,7 +971,7 @@ for ( i in 1:length(mafFiles) ) {
   names(ActiveDriverWGSInfo[[i]]) <- c("SYMBOL", "chr", "pos1", "pos2", "ref", "alt", "patient")
   ActiveDriverWGSInfo[[i]]$patient <- as.vector(ActiveDriverWGSInfo[[i]]$patient)
   
-  ##### Load UMCCR cancer gene list for ActiveDriverWGS if the "activedriverwgs_all_genes" paramter is not set to TRUE
+  ##### Load UMCCR cancer gene list for ActiveDriverWGS if the "activedriverwgs_all_genes" parameter is not set to TRUE
   ##### (https://github.com/vladsaveliev/NGS_Utils/blob/master/ngs_utils/reference_data/key_genes/umccr_cancer_genes.2019-03-20.tsv)
   if ( !params$activedriverwgs_all_genes ) {
     cancer_genes <- read.table(params$cancer_genes, sep="\t", as.is=TRUE, header=TRUE, row.names=NULL, quote="")
@@ -1049,8 +1049,8 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Suppress automatic output to console
   sink("/dev/null")
-  ##### NOTE: the analysis crash when "recovery.dir" parameter (for storing recovery files) is used so currenlty it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
-  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, filter_hyper_MB = params$hypermut_sample_cutoff/100, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
+  ##### NOTE: the analysis crash when "recovery.dir" parameter (for storing recovery files) is used so currently it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
+  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
   sink() 
 
   ##### Order the table by element_muts_obs, pp_element, fdr_element and element_enriched
