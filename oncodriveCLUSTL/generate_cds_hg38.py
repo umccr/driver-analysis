@@ -1,5 +1,5 @@
 import os, sys
-os.environ["PATH"] = os.path.dirname(sys.executable) + os.pathsep + os.environ["PATH"]
+#os.environ["PATH"] = os.path.dirname(sys.executable) + os.pathsep + os.environ["PATH"]
 from functools import partial
 
 import warnings
@@ -95,6 +95,8 @@ cds_df.sort_values(by=['CHROMOSOME', 'START', 'END'], axis=0, ascending=True, in
 # Merge overlaping exons of the same gene
 output_file = '/Users/kanwals/UMCCR/research/projects/PAAD_atlas/driver_analysis/oncodriveclustl/output_regions.tsv.gz'
 transcripts_by_gene = cds_df.groupby('GENE_ID')
+#import subprocess
+#subprocess.run(['which', 'mergeBed'])
 transcripts_gene_merged = transcripts_by_gene.apply(partial(generate_gene_merged_coordinates))
 transcripts_gene_merged.reset_index(drop=True, inplace=True)
 transcripts_gene_merged.sort_values(by=['CHROMOSOME', 'START', 'END'], axis=0, ascending=True, inplace=True)
