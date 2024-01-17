@@ -62,10 +62,10 @@ Argument | Description
 
 <br /> 
 
+The `regions-file` for hg38 coding sequence can be preapared using [generate_cds_hg38.py](./generate_cds_hg38.py)
+
 
 ### Running the analysis
-
-Conda `driver-summary` (see [driver analysis installation](https://github.com/umccr/driver-analysis#installation) section) needs to be activated frist.
 
 The analysis are executed using `oncodrivefml` command followed by [paramters](#parameters) of interest, e.g.
 

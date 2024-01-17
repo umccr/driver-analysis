@@ -38,7 +38,7 @@ It takes a while to run the tool, even with the subset of data for cancers only 
 	
 The paper has ideas around using multiple methods for predicting drivers. Also look through supplementary material.
 
-**OnocDriveCLUST:**
+**OncoDriveCLUST:**
 
 Oncodrive has been superseeded by OncodriveCLUSTL
 
@@ -47,5 +47,7 @@ Oncodrive has been superseeded by OncodriveCLUSTL
 
 		
 Propose to construct the background model using the degree of clustering of synonymous mutations, which are assumed not to be under positive selection and may thus reflect the baseline mutation clustering of the tumour.
+
+Detailed discussion on the installtion and usage of the tool can be found in [OncodriveCLUSTL.md](`./oncodriveCLUSTL/OncodriveCLUSTL.md`).
 
 
