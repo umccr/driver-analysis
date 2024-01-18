@@ -67,31 +67,39 @@ The `regions-file` for hg38 coding sequence can be preapared using [generate_cds
 
 ### Running the analysis
 
-The analysis are executed using `oncodrivefml` command followed by [paramters](#parameters) of interest, e.g.
+The analysis are executed using `oncodriveclustl` command followed by [paramters](#parameters) of interest, e.g.
 
 ```
-conda activate driver-analysis
+#!/bin/bash
+#PBS -P gx8
+#PBS -q normalbw
+#PBS -l walltime=48:00:00
+#PBS -l mem=240GB
+#PBS -l ncpus=7
+#PBS -l wd
+#PBS -l storage=gdata/gx8
 
-data="examples"
+# this generates an error if set. This is used by GISTIC tool
+unset LD_LIBRARY_PATH
 
-cd $data
-
-# Run OncodriveFML using MAF from ICGC PACA-AU samples
-oncodrivefml --input simple_somatic_mutation.open.PACA-AU.maf --elements /g/data3/gx8/extras/jmarzec/apps//path/to/oncodrivefml/example/data/example/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-AU_oncodrivefml_analysis
-
-# Run OncodriveFML using MAF from ICGC PACA-CA samples
-oncodrivefml --input simple_somatic_mutation.open.PACA-CA.maf --elements /g/data3/gx8/extras/jmarzec/apps//path/to/oncodrivefml/example/data/example/cds.tsv.gz --sequencing wgs --output  ICGC_PACA-CA_oncodrivefml_analysis
+/g/data3/gx8/extras/sehrishk/miniconda/envs/oncodriveclustl-3.7/bin/oncodriveclustl --input-file /g/data/gx8/projects/Kanwal_pdac_atlas/driver_analysis/pdac_oncodriveclustl_analysis/pdac_samples.tsv --regions-file /g/data/gx8/projects/Kanwal_pdac_atlas/driver_analysis/output_cds_element.tsv.gz --genome hg38 --output-directory /g/data/gx8/projects/Kanwal_pdac_atlas/driver_analysis/pdac_cds_update_oncodrivefmoncodriveclustl
 ```
+
+Running with default simulating, smoothing and clustering OncodriveCLUSTL parameters is not recommended as these may not be optimal for our data.
+Supplementary Methods has details on how to perform model selection for specific data.
+
+Same for Signatures which by default are calculated as mutation frequencies: # mutated ref>alt k-mer counts / # total substitutions
+Supplementary Methods has information on how to perform a more accurate signatures calculation.
 
 <br />
 
 ### Output
 
-[OncodriveFML](http://bbglab.irbbarcelona.org/oncodrivefml/home) generates 3 output files with the same name but different extension. The name given to the files is the same as the name of the mutations file (*simple_somatic_mutation.open.PACA-AU.maf* and *simple_somatic_mutation.open.PACA-CA.maf* in the [example](#running-the-analysis) above) followed by `-oncodrivefml` and the extension:
+OncodriveCLUSTL generates 3 output files.
 
-* `.tsv` - tabulated file with the analysis results
-* `.png` - an image with the most significant genes labeled
-* `.html` - HTML file with an interactive plot which can be used to search for specific genes
+* Elements results file (`elements_results.txt`). TSV file containing results of the analyzed elements
+* Clusters results file (`clusters_results.tsv`). TSV file containing results of the clusters observed in the analyzed elements
+* Log file (`results.log`). TXT file containing OncodriveCLUSTL's run information
 
 
 <br />
