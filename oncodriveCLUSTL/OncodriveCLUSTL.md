@@ -35,10 +35,6 @@ $ oncodriveclustl --help
 
 <br>
 
-### Data download
-
-The [scores and reference data](#reference-data) will be automatically downloaded the first time  *[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml/src/master/)* is run, but to speed up the process it is better to first download it using `BgData` package management tool that is installed together with *OncodriveFML*.
-
 #### Example installation and run script
 
 ```
@@ -92,6 +88,18 @@ Same for Signatures which by default are calculated as mutation frequencies: # m
 Supplementary Methods has information on how to perform a more accurate signatures calculation.
 
 <br />
+
+**Model Selection:**
+
+OncodriveCLUSTL is an unsupervised method to identify clustering of mutations along the genomic sequence of GEs. However, the method resorts to three main hyperparameters that strongly determine its performace: the shape of identified clusters depends on the smoothing (i) and clustering (ii) windows; the simulation of mutations depends on a sampling or simulation window (iii) which defines the region where mutations are randomly distributed.
+
+Model selection is done based on two criteria: 
+
+	i) goodness of fit of observed p-values vs. the uniform distribution; 
+	ii) enrichment of bona-fide known cancer elements in the ranking given by the method as an output.
+	
+
+The script used for model selction for PDAC data can be found [here](./calculate_ks_mod.py). It takes the subset of observed p-values which aregreater than 0.1; second, it samples 1,000 of them to avoid sample size biases in our comparisons; third, calculates the KS statistic. It is recommended to select all configurations bearing an absolute value of the KS statistic up to 10% larger than the minimum KS statistic. This procedure left us with a set of most suitable configurations.
 
 ### Output
 
