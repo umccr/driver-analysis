@@ -12,3 +12,6 @@
 *.Rhistory
 *.css
 
+# Downloaded data #
+######################
+data/pdac_atlas/out
