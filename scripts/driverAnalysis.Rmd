@@ -389,7 +389,7 @@ if ( params$oncodrivefml_conf != "none" ){
 }
 
 ##### Read in OncodriveCLUSTL analysis results (https://bitbucket.org/bbglab/oncodriveclustl/src/master/)
-runOncodriveclustlChunk <- FALSE
+runOncodrivefmlChunk <- FALSE
 
 if ( params$oncodriveclustl != "none" ){
   
@@ -405,7 +405,7 @@ if ( params$oncodriveclustl != "none" ){
       
       oncodriveCLUSTL.res.table[[i]] <- read.table(paste0(oncodriveCLUSTL.res[i], ".txt"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
       
-      runOncodriveclustlChunk <- TRUE
+      runOncodriveCLUSTLChunk <- TRUE
     }
   }
 }
@@ -930,7 +930,7 @@ for ( i in 1:length(mafFiles) ) {
 ```
 
 ```{r oncodriveCLUSTL_load_results,  include=FALSE, eval=runOncodriveCLUSTLChunk}
-##### Create a list to store OncodriveFML info for individual datasets
+##### Create a list to store OncodriveCLUSTL info for individual datasets
 signif_genes.methods$OncodriveCLUSTL <- vector("list", length(datasets.list))
 names(signif_genes.methods$OncodriveCLUSTL) <- datasets.list
 
@@ -941,27 +941,30 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Order the table by SCORE and P-value
   oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order( oncodriveCLUSTL.res.table[[i]]$SCORE, decreasing = TRUE), ]
-  oncodriveCLUSL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order(oncodriveCLUSTL.res.table[[i]]$P_VALUE), ]
-  rownames(oncodriveFML.res.table[[i]]) = NULL
+  oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order(oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL), ]
+  rownames(oncodriveCLUSTL.res.table[[i]]) = NULL
   
   ##### Calculate expected p-value
-  oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
+  oncodriveCLUSTL.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL))
 
   ##### Record significant driver genes for each dataset
-  signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE <= params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE <= params$oncodrivefml_q ]))
+  signif_genes.datasets[[i]]$OncodriveCLUSTL <- as.character(oncodriveCLUSTL.res.table[[i]][
+    oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL <= params$oncodriveclustl_p &
+      oncodriveCLUSTL.res.table[[i]]$Q_EMPIRICAL <= params$oncodriveclustl_q, "SYMBOL"])
   
   ##### Remove NAs
-  signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
+  signif_genes.datasets[[i]]$OncodriveCLUSTL <- signif_genes.datasets[[i]]$OncodriveCLUSTL[ !is.na(signif_genes.datasets[[i]]$OncodriveCLUSTL)]
   
   ##### Report significant driver genes
-  signif_genes_table.datasets[[i]]$OncodriveFML <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
-  rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
+  signif_genes_table.datasets[[i]]$OncodriveCLUSTL <- oncodriveCLUSTL.res.table[[i]][ 
+    oncodriveCLUSTL.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveCLUSTL , ]
+  rownames(signif_genes_table.datasets[[i]]$OncodriveCLUSTL) = NULL
   
-  ##### Record sinigficant driver genes for each dataset and method
-  signif_genes.methods$OncodriveFML[[i]] <- as.vector(signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL)
+  ##### Record significant driver genes for each dataset and method
+  signif_genes.methods$OncodriveCLUSTL[[i]] <- as.vector(signif_genes_table.datasets[[i]]$OncodriveCLUSTL$SYMBOL)
   
   ##### Organise the table of significant genes
-  signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
+  signif_genes_table.datasets[[i]]$OncodriveCLUSTL <- signif_genes_table.datasets[[i]]$OncodriveCLUSTL[ , c("SYMBOL", "ENSID", "CHROMOSOME", "SCORE", "P_EMPIRICAL", "P_VALUE_EXP", "P_ANALYTICAL", "Q_EMPIRICAL", "Q_ANALYTICAL", "LENGTH", "TOTAL_MUT", "CLUSTERED_MUT", "CLUSTERS", "SIM_CLUSTERS", "P_TOPCLUSTER", "Q_TOPCLUSTER")]
 }
 ```
 
