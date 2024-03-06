@@ -318,7 +318,7 @@ if ( !is.na(params$samples_id_cols) ) {
   
   for ( i in 1:length(mafFiles) ) {
     
-    ##### Check if use-defined column name exists
+    ##### Check if user-defined column name exists
     if ( samples_id_cols[i] %in% names(mafInfo[[i]]@data) && samples_id_cols[i] != "Tumor_Sample_Barcode" ) {
       
       ##### Change the use-defined column with samples' IDs to "Tumor_Sample_Barcode". If this column name already exist, then renames it to "Tumor_Sample_Barcode.orig"
@@ -331,7 +331,7 @@ if ( !is.na(params$samples_id_cols) ) {
         cat(paste0("\nColumn \"", samples_id_cols[i], "\" does not exist in MAF file ", mafFiles[i], "!\n\n"))
       }
       
-      ##### Now read the data with changes column names as a maf object
+      ##### Now read the data with changed column names as a maf object
       mafInfo[[i]] <- maftools::read.maf(maf = maf.data, vc_nonSyn = unlist(strsplit(params$nonSyn_list, split=',', fixed=TRUE)), removeDuplicatedVariants = params$remove_duplicated_variants, verbose = FALSE)
     }
   }
@@ -644,6 +644,9 @@ names(sel_cv) <- datasets.list
 
 theta <- vector("list", length(mafFiles))
 names(theta) <- datasets.list
+
+theta_indels <- vector("list", length(mafFiles))
+names(theta_indels) <- datasets.list
 
 hypermut_samples <- vector("list", length(mafFiles))
 names(hypermut_samples) <- datasets.list
