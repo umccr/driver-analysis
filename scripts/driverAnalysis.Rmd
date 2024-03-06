@@ -765,9 +765,9 @@ ActiveDriverWGS.genes <- NULL
 
 for ( i in 1:length(mafFiles) ) {
   
-  ActiveDriverWGSInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")], mafInfo[[i]]@maf.silent[, c("SYMBOL", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")])
+  ActiveDriverWGSInfo[[i]] <- rbind(mafInfo[[i]]@data[, c("Hugo_Symbol", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")], mafInfo[[i]]@maf.silent[, c("Hugo_Symbol", "Chromosome", "Start_Position", "End_Position", "Reference_Allele", "Tumor_Seq_Allele2", "Tumor_Sample_Barcode")])
   names(ActiveDriverWGSInfo[[i]]) <- c("SYMBOL", "chr", "pos1", "pos2", "ref", "alt", "patient")
-  ActiveDriverWGSInfo[[i]]$patient <- as.vector(ActiveDriverWGSInfo[[i]]$patient)
+  #ActiveDriverWGSInfo[[i]]$patient <- as.vector(ActiveDriverWGSInfo[[i]]$patient)
   
   ##### Load UMCCR cancer gene list for ActiveDriverWGS if the "activedriverwgs_all_genes" parameter is not set to TRUE
   ##### (https://github.com/vladsaveliev/NGS_Utils/blob/master/ngs_utils/reference_data/key_genes/umccr_cancer_genes.2019-03-20.tsv)
@@ -799,8 +799,16 @@ for ( i in 1:length(mafFiles) ) {
   ##### Make sure that only autosomal and sex chromosomes are provided
   ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][ ActiveDriverWGSInfo[[i]]$chr %in% c(paste0("chr", 1:22), "chrX", "chrY"), ]
   
-  ##### Finally make sure that all rows have defined "ref" and "alt" values (none NAs)
+  ##### Make sure that all rows have defined "ref" and "alt" values (none NAs)
   ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][complete.cases(ActiveDriverWGSInfo[[i]]), ]
+  
+  #### Make sure Reference and alternate alleles are A, T, C, G or -
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][grepl("[ATGC\\-]", ref),]
+  ActiveDriverWGSInfo[[i]] <- ActiveDriverWGSInfo[[i]][grepl("[ATGC\\-]", alt),]
+  
+  #### Make sure patient column is string
+  ActiveDriverWGSInfo[[i]]$patient <- as.character(ActiveDriverWGSInfo[[i]]$patient)
+  
 }
 
 ##### ActiveDriverWGS also requires specific elements (which will be used for the analysis) that must be in data frame containing the columns with the correct column names (chr, start, end, and id)
