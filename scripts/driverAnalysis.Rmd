@@ -388,6 +388,28 @@ if ( params$oncodrivefml_conf != "none" ){
   }
 }
 
+##### Read in OncodriveCLUSTL analysis results (https://bitbucket.org/bbglab/oncodriveclustl/src/master/)
+runOncodriveclustlChunk <- FALSE
+
+if ( params$oncodriveclustl != "none" ){
+  
+  oncodriveCLUSTL.res <- unlist(strsplit(params$oncodriveclustl, split=',', fixed=TRUE))
+  
+  oncodriveCLUSTL.res.table <- vector("list", length(mafFiles))
+  names(oncodriveCLUSTL.res.table) <- datasets.list
+  
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(oncodriveCLUSTL.res[i], ".txt")) ) {
+      
+      oncodriveCLUSTL.res.table[[i]] <- read.table(paste0(oncodriveCLUSTL.res[i], ".txt"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
+      
+      runOncodriveclustlChunk <- TRUE
+    }
+  }
+}
+
 ##### Read in CGI analysis results (https://www.cancergenomeinterpreter.org/)
 runcgiChunk <- FALSE
 
@@ -856,68 +878,6 @@ if ( file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
 }
 ```
 
-```{r oncodriveCLUST_analysis,  include=FALSE }
-##### In this chunk the clusters variants are calculated, but the results are reported in the next chunk
-##### Import protein info data provided within maftools package
-gl <- data.table::fread(input = paste("zcat <", system.file("extdata", "prot_len.txt.gz", package = "maftools")), sep = "\t", stringsAsFactors = FALSE)
-
-##### Create a list to store MAF info for individual datasets
-oncodriveClust.res <- vector("list", length(mafFiles))
-names(oncodriveClust.res) <- datasets.list
-
-signif_genes.methods$OncodriveCLUST <- vector("list", length(datasets.list))
-names(signif_genes.methods$OncodriveCLUST) <- datasets.list
-
-runOncodriveClustChunk <- FALSE
-
-###### Generate separate plot for each dataset
-for ( i in 1:length(mafFiles) ) {
-  
-  oncodriveClust.res[[datasets.list[i]]] <- oncodrive_analysis(mafInfo[[i]], datasets.list[i], gl) 
-
-  if ( !is.null(oncodriveClust.res[[datasets.list[i]]][[1]]) ) {
-    
-    ##### Order results by genes' increasing FDR and then by decreasing total number of mutations
-    oncodriveClust.res[[datasets.list[i]]][[1]] <- oncodriveClust.res[[datasets.list[i]]][[1]][ order(oncodriveClust.res[[datasets.list[i]]][[1]][, "fdr"],  rev(unlist(oncodriveClust.res[[datasets.list[i]]][[1]][, "total"]))) , ]
-    
-    ##### Record sinigficant driver genes for each dataset and method
-    signif_genes.datasets[[i]]$OncodriveCLUST <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
-    signif_genes.methods$OncodriveCLUST[[i]] <- as.character(oncodriveClust.res[[datasets.list[i]]][[1]]$Hugo_Symbol[ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr ])
-    
-    signif_genes_table.datasets[[i]]$OncodriveCLUST <- oncodriveClust.res[[datasets.list[i]]][[1]][ oncodriveClust.res[[datasets.list[i]]][[1]]$fdr < params$oncodriveclust_fdr, ]
-    rownames(signif_genes_table.datasets[[i]]$OncodriveCLUST) = NULL
-    
-    ##### Check if the field with AA change info is present in given MAF at all
-    if ( length(signif_genes_table.datasets[[i]]$OncodriveCLUST) != 0 ) {
-      
-      runOncodriveClustChunk <- TRUE
-      
-      ##### Check if the any of the mutated genes demonstrates significant cluster score
-      if ( nrow(signif_genes_table.datasets[[i]]$OncodriveCLUST) > 0 ) {
-        
-        ##### Organise the table of significant genes
-        cols <- c("Hugo_Symbol", "clusterScores", "zscore", "pval", "fdr", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins", "Missense_Mutation", "Nonsense_Mutation", "Splice_Site", "Translation_Start_Site", "total", "MutatedSamples", "AlteredSamples", "clusters", "muts_in_clusters", "protLen", "fract_muts_in_clusters")
-        cols <- cols[ cols %in% names(signif_genes_table.datasets[[i]]$OncodriveCLUST)]
-        cols <- match(cols, names(signif_genes_table.datasets[[i]]$OncodriveCLUST) )
-        signif_genes_table.datasets[[i]]$OncodriveCLUST <- subset(signif_genes_table.datasets[[i]]$OncodriveCLUST, select=cols)
-      } else {
-        signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
-        signif_genes.methods$OncodriveCLUST[[i]] <- NULL
-        methods <- methods[ methods %!in% "OncodriveCLUST" ]
-      }
-    } else {
-      signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
-      signif_genes.methods$OncodriveCLUST[[i]] <- NULL
-      methods <- methods[ methods %!in% "OncodriveCLUST" ]
-    }
-  } else {
-    signif_genes.datasets[[i]]$OncodriveCLUST <- NULL
-    signif_genes.methods$OncodriveCLUST[[i]] <- NULL
-    methods <- methods[ methods %!in% "OncodriveCLUST" ]
-  }
-}
-```
-
 ```{r oncodriveFML_load_results,  include=FALSE, eval=runOncodrivefmlChunk}
 ##### Create a list to store OncodriveFML info for individual datasets
 signif_genes.methods$OncodriveFML <- vector("list", length(datasets.list))
@@ -927,9 +887,11 @@ names(signif_genes.methods$OncodriveFML) <- datasets.list
 for ( i in 1:length(mafFiles) ) {
   
   ##### Move gene name to the first column
-  col_idx <- grep("SYMBOL", names(oncodriveFML.res.table[[i]]))
-  oncodriveFML.res.table[[i]] <- subset(oncodriveFML.res.table[[i]], select=c(names(oncodriveFML.res.table[[i]])[c(col_idx, c(1:ncol(oncodriveFML.res.table[[i]]))[-col_idx])]))
-
+  #col_idx <- grep("SYMBOL", names(oncodriveFML.res.table[[i]]))
+  #oncodriveFML.res.table[[i]] <- subset(oncodriveFML.res.table[[i]], select=c(names(oncodriveFML.res.table[[i]])[c(col_idx, c(1:ncol(oncodriveFML.res.table[[i]]))[-col_idx])]))
+  oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]] %>%
+    dplyr::relocate(SYMBOL)
+    
   ##### Order the table by P_VALUE, MUTS and SAMPLES
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order( oncodriveFML.res.table[[i]]$SAMPLES, oncodriveFML.res.table[[i]]$MUTS, decreasing = TRUE), ]
   oncodriveFML.res.table[[i]] <- oncodriveFML.res.table[[i]][ order(oncodriveFML.res.table[[i]]$P_VALUE), ]
@@ -938,7 +900,43 @@ for ( i in 1:length(mafFiles) ) {
   ##### Calculate expected p-value
   oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
 
-  ##### Record sinigficant driver genes for each dataset
+  ##### Record significant driver genes for each dataset
+  signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE <= params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE <= params$oncodrivefml_q ]))
+  
+  ##### Remove NAs
+  signif_genes.datasets[[i]]$OncodriveFML <- signif_genes.datasets[[i]]$OncodriveFML[ !is.na(signif_genes.datasets[[i]]$OncodriveFML)]
+  
+  ##### Report significant driver genes
+  signif_genes_table.datasets[[i]]$OncodriveFML <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
+  rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
+  
+  ##### Record sinigficant driver genes for each dataset and method
+  signif_genes.methods$OncodriveFML[[i]] <- as.vector(signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL)
+  
+  ##### Organise the table of significant genes
+  signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
+}
+```
+
+```{r oncodriveCLUSTL_load_results,  include=FALSE, eval=runOncodriveCLUSTLChunk}
+##### Create a list to store OncodriveFML info for individual datasets
+signif_genes.methods$OncodriveCLUSTL <- vector("list", length(datasets.list))
+names(signif_genes.methods$OncodriveCLUSTL) <- datasets.list
+
+###### Record results for each dataset
+for ( i in 1:length(mafFiles) ) {
+  #### Filter rows where SCORE is NA or <0
+  oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ !is.na(oncodriveCLUSTL.res.table[[i]]$SCORE) & oncodriveCLUSTL.res.table[[i]]$SCORE > 0, ]
+  
+  ##### Order the table by SCORE and P-value
+  oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order( oncodriveCLUSTL.res.table[[i]]$SCORE, decreasing = TRUE), ]
+  oncodriveCLUSL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order(oncodriveCLUSTL.res.table[[i]]$P_VALUE), ]
+  rownames(oncodriveFML.res.table[[i]]) = NULL
+  
+  ##### Calculate expected p-value
+  oncodriveFML.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveFML.res.table[[i]]$P_VALUE))
+
+  ##### Record significant driver genes for each dataset
   signif_genes.datasets[[i]]$OncodriveFML <- unique(c(as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$P_VALUE <= params$oncodrivefml_p  ], as.character(oncodriveFML.res.table[[i]]$SYMBOL)[ oncodriveFML.res.table[[i]]$Q_VALUE <= params$oncodrivefml_q ]))
   
   ##### Remove NAs
