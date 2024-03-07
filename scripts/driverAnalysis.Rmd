@@ -49,7 +49,7 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 
 * **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
 * **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu *et al*., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
-* **[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"}** (see paper by [Tamborero *et al*., 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
+* **[OncodriveClustl](https://bitbucket.org/bbglab/oncodriveclustl/src/master/){target="_blank"}** (see paper by [ Nuria Lopez-Bigas *et al*., 2019](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 
@@ -405,7 +405,7 @@ if ( params$oncodriveclustl != "none" ){
       
       oncodriveCLUSTL.res.table[[i]] <- read.table(paste0(oncodriveCLUSTL.res[i], ".txt"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL)
       
-      runOncodriveCLUSTLChunk <- TRUE
+      runOncodriveClustlChunk <- TRUE
     }
   }
 }
@@ -460,15 +460,26 @@ signif_genes_table.datasets <- vector("list", length(mafFiles))
 names(signif_genes_table.datasets) <- datasets.list
 
 ##### Initiate a list to record significant driver genes for each method
-methods <- c("dNdScv", "dNdSloc", "ActiveDriverWGS", "OncodriveCLUST")
+methods <- c("dNdScv", "dNdSloc")
 
 if ( runOncodrivefmlChunk ) {
   methods <- c(methods, "OncodriveFML")
 }
 
+if ( runOncodriveClustlChunk ) {
+  methods <- c(methods, "OncodriveCLUSTL")
+}
+
+if ( runactivedriverwgs ) {
+  methods <- c(methods, "ActiveDriverWGS")
+  runActiveDriverWGSChunk <- TRUE
+}
+
 if ( runcgiChunk ) {
   methods <- c(methods, "CGI")
 }
+
+
 
 signif_genes.methods <- vector("list", length(methods))
 names(signif_genes.methods) <- methods
@@ -929,7 +940,7 @@ for ( i in 1:length(mafFiles) ) {
 }
 ```
 
-```{r oncodriveCLUSTL_load_results,  include=FALSE, eval=runOncodriveCLUSTLChunk}
+```{r oncodriveCLUSTL_load_results,  include=FALSE, eval=runOncodriveClustlChunk}
 ##### Create a list to store OncodriveCLUSTL info for individual datasets
 signif_genes.methods$OncodriveCLUSTL <- vector("list", length(datasets.list))
 names(signif_genes.methods$OncodriveCLUSTL) <- datasets.list
@@ -1100,8 +1111,8 @@ for ( i in 1:length(mafFiles) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ] 
     }
     
-    if ( "OncodriveCLUST" %in% names(signif_genes.datasets[[i]]) ) {
-      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUST"], decreasing = TRUE),  ] 
+    if ( "OncodriveCLUSTL" %in% names(signif_genes.datasets[[i]]) ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUSTL"], decreasing = TRUE),  ] 
     }
     
     if ( "ActiveDriverWGS" %in% names(signif_genes.datasets[[i]]) ) {
@@ -1433,7 +1444,7 @@ for ( i in 1:length(mafFiles) ) {
     data.df <- data.frame(signif_genes_table.datasets[[i]]$dNdScv$gene_name, -log(p_global,10), mutations_no, -log(p_subs,10), -log(p_ind,10) )
     colnames(data.df) <- c("gene", "p_global", "mutations_no", "p_subs", "p_ind")
     
-    ##### Calculate x and y axis rangeby adding 10% of the original range
+    ##### Calculate x and y axis range by adding 10% of the original range
     x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
     y_range <- c(0, max(data.df$p_global) + max(data.df$p_global)*0.1)
     
@@ -1821,11 +1832,13 @@ widges.list
 
 ***
 
-### OncodriveClust {.tabset}
+### OncodriveClustl {.tabset}
 
-Cancer driver genes detection based on positional clustering using [OncodriveClust](http://bg.upf.edu/group/projects/oncodrive-clust.php){target="_blank"} algorithm is based on the fact that most of the variants in cancer causing genes are enriched at few specific loci (hot-spots). According to this concept mutations in these regions potentially change the function of these proteins in a manner that provides an adaptive advantage to cancer cells and consequently are positively selected during clonal evolution of tumours. This property can thus be used to nominate novel candidate driver genes, as described in the paper [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Tamborero *et al*, 2013](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"}.
+Cancer driver genes detection based on positional clustering using [OncodriveClustl](https://bbglab.irbbarcelona.org/oncodriveclustl/home){target="_blank"} is a new nucleotide sequence-based clustering algorithm to detect cancer drivers in genomic regions. OncodriveCLUSTL is based on a local background model derived from the nucleotide context mutational probabilities of the cohort under study. , as described in the paper [OncodriveClustl](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Nuria Lopez-Bigas *et al*, 2019](https://academic.oup.com/bioinformatics/article/35/22/4788/5522012?login=false){target="_blank"}.
 
 <span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
+
+[OncodriveClustl](https://bitbucket.org/bbglab/oncodriveclustl/src/master/){target="_blank"} results are **`r if ( runOncodriveClustlChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
 
 ***
 
@@ -1843,60 +1856,61 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 <summary>Input parameters</summary>
 <font size="2">
 
-* False discovery rate (FDR) threshold for reporting cancer driver genes: **`r params$oncodriveclust_fdr`**
+* P-value for reporting cancer driver genes: **`r params$oncodriveclustl_p`**
 
 </font> 
 </details>
 
 ***
 
-[OncodriveClust](https://bioconductor.org/packages/release/bioc/vignettes/maftools/inst/doc/maftools.html#92_detecting_cancer_driver_genes_based_on_positional_clustering){target="_blank"} results are **`r if ( runOncodriveClustChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
-
 #### Plot
 
 The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
-```{r oncodriveCLUST_plot, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
+```{r oncodriveCLUSTL_plot, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
 suppressMessages(library(plotly))
+
 
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  
-  ##### Check if the field with AA change info is present in given MAF at all
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+  if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) > 0 ) {
     
-    #### Check if the any of the mutated genes demonstrates significant cluster score
-    if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) > 0 ) {
+    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
+    q_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$Q_EMPIRICAL
+    q_obs[ q_obs == 0 ] <- 1*10^-16
+    p_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$P_EMPIRICAL
+    p_obs[ p_obs == 0 ] <- 1*10^-16
+    p_exp <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$P_VALUE_EXP
+    p_exp[ p_exp == 0 ] <- 1*10^-16
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$TOTAL_MUT )
+    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no")
+    
+    ##### Calculate x and y axis rangeby adding 10% of the original range
+    x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
+    
+    ##### Generate scatter-plot
+    ##### Check if any of the significant genes have determined q-value
+    if ( !all(is.na(data.df$q)) ) {
       
-      ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-      oncodriveClust.res.table <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST
-      fdr <- oncodriveClust.res.table$fdr
-      fdr[ fdr == 0 ] <- 1*10^-16
-      
-      ##### Prepare data frame for plotting with plotly
-      data.df <- data.frame(oncodriveClust.res.table$Hugo_Symbol, -log(fdr,10), oncodriveClust.res.table$muts_in_clusters, oncodriveClust.res.table$clusterScores, oncodriveClust.res.table$clusters )
-      colnames(data.df) <- c("gene", "fdr", "mutations_no", "clusterScores", "clusters")
-      
-      ##### Calculate x and y axis rangeby adding 10% of the original range
-      x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
-      y_range <- c(0, max(data.df$fdr) + max(data.df$fdr)*0.1)
-      
-      ##### Generate scatter-plot
-      widges.list[[i]] <- plot_ly(data.df, x = ~mutations_no, y = data.df$fdr, color = data.df$clusterScores, size = data.df$clusters, text= ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
-        layout(title = datasets.list[i], xaxis = list(title = "Number of mutations in clusters", range = x_range), yaxis = list(title = "-log10( FDR )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
       
-      ##### Save the plot as html (PLOTLY)
-      saveWidgetFix(as_widget(widges.list[[i]]), paste0(outDir, "/driver_analysis_oncodriveCLUST_plot_", datasets.list[i], ".html"), selfcontained = TRUE)
-    
     } else {
-      cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
-      methods <- methods[ methods %!in% "OncodriveCLUST" ]
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE)
     }
+  
   } else {
-      cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
   }
 }
 
@@ -1911,29 +1925,29 @@ widges.list
 
 #### Cancer driver genes
 
-Table(s) presenting per-dataset [OncodriveClust](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values*, *false discovery rate (FDR)*, *number of mutations in clusters*, as well as the *fraction of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
+Table(s) presenting per-dataset [OncodriveClustl](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} results, including *cluster scores*, *p-values* , *p-values* and *number of mutations in clusters*, as well as the *total number of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
-```{r oncodriveCLUST_table, comment=NA, warning=FALSE, eval = runOncodriveClustChunk}
-##### Generate tables with oncodriveCLUST results
+```{r oncodriveCLUSTL_table, comment=NA, warning=FALSE, eval = runOncodriveClustlChunk}
+##### Generate tables with oncodriveCLUSTL results
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   
   ##### Check if the field with AA change info is present in given MAF at all
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
     
     #### Check if the any of the mutated genes demonstrates significant cluster score
-    if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) > 0 ) {
+    if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) > 0 ) {
       
-      widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUST, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUST), 'text-align' = 'center' ) %>%
-    formatRound(columns = c("clusterScores", "zscore", "fract_muts_in_clusters"), 1) %>%
-    formatRound(columns = c("pval", "fdr"), 6)
+      widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$OncodriveCLUSTL, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$OncodriveCLUSTL), 'text-align' = 'center' ) %>%
+    formatRound(columns = c("SCORE"), 1) %>%
+    formatRound(columns = c("P_EMPIRICAL", "P_VALUE_EXP", "P_ANALYTICAL", "Q_EMPIRICAL", "Q_ANALYTICAL", "P_TOPCLUSTER", "Q_TOPCLUSTER"), 6)
       
     } else {
       cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
-      runOncodriveClustChunk <- FALSE
+      runOncodriveClustlChunk <- FALSE
     }
   } else {
     cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
@@ -2447,14 +2461,14 @@ if ( pchangeStatus ) {
 
 ***
 
-`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset}") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL {.tabset}") } else { c(" ") }`
 
-```{r lollipop_plots_OncodriveCLUST, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodriveClustChunk}
+```{r lollipop_plots_OncodriveCLUSTL, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodriveClustlChunk}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
   output_plot <- list()
-  genes <- unique(verify_genes(unlist(signif_genes.methods$OncodriveCLUST)))
+  genes <- unique(verify_genes(unlist(signif_genes.methods$OncodriveCLUSTL)))
   
   for( i in 1:length(genes) ){
     cat("\n#### ", genes[i], "\n")
@@ -2462,7 +2476,7 @@ if ( pchangeStatus ) {
       try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
       cat("\n\n***\n")
     } else {
-      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveCLUST)[i], "is not available\n\n", sep=" "))
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$OncodriveCLUSTL)[i], "is not available\n\n", sep=" "))
       cat("\n***\n")
     }
   }
@@ -2625,19 +2639,19 @@ widges.list
 cat("\n\n\n")
 ```
 
-`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
 
-`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL") } else { c(" ") }`
 
-```{r mutations_annotation_OncodriveCLUST, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
+```{r mutations_annotation_OncodriveCLUSTL, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
 ##### Present results summary table in the html report
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
     
-    annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUST[[i]], ]
+    annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUSTL[[i]], ]
   
     ##### Move gene name to the first column
     col_idx <- grep("gene", names(annotmuts))
@@ -2854,20 +2868,20 @@ widges.list
 cat("\n\n\n")
 ```
 
-`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
 
-`r if ( runOncodriveClustChunk ) { c("### OncodriveCLUST {.tabset .tabset-fade}") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL {.tabset .tabset-fade}") } else { c(" ") }`
 
-`r if ( runOncodriveClustChunk ) { c("#### Non-synonymous") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
 
-```{r details_mut_OncodriveCLUST_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
+```{r details_mut_OncodriveCLUSTL_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUST[[i]], type = "nonsynonymous")
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUSTL[[i]], type = "nonsynonymous")
   } else {
     cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
   }
@@ -2880,18 +2894,18 @@ widges.list
 cat("\n\n\n")
 ```
 
-`r if ( runOncodriveClustChunk ) { c("***") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
 
-`r if ( runOncodriveClustChunk ) { c("#### Silent") } else { c(" ") }`
+`r if ( runOncodriveClustlChunk ) { c("#### Silent") } else { c(" ") }`
 
-```{r details_mut_OncodriveCLUST_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+```{r details_mut_OncodriveCLUSTL_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUST) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUST[[i]], type = "silent")
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUSTL[[i]], type = "silent")
   } else {
     cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
   }
