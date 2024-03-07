@@ -65,11 +65,11 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **samples_id_cols**: `r params$samples_id_cols`
 * **dnds_p**: `r params$dnds_p`
 * **dnds_q**: `r params$dnds_q`
+* **runactivedriverwgs**: `r params$runactivedriverwgs`
 * **activedriverwgs_p**: `r params$activedriverwgs_p`
 * **activedriverwgs_fdr**: `r params$activedriverwgs_fdr`
 * **activedriverwgs_cores**: `r params$activedriverwgs_cores`
 * **activedriverwgs_all_genes**: `r params$activedriverwgs_all_genes`
-* **oncodriveclust_fdr**: `r params$oncodriveclust_fdr`
 * **ratios_ci**: `r params$ratios_ci`
 * **hypermut_sample_cutoff**: `r params$hypermut_sample_cutoff`
 * **max_muts_per_gene**: `r params$max_muts_per_gene`
@@ -753,7 +753,7 @@ for ( i in 1:length(mafFiles) ) {
 }
 ```
 
-```{r ActiveDriverWGS_format_data, comment = NA, message=FALSE, warning=FALSE }
+```{r ActiveDriverWGS_format_data, comment = NA, message=FALSE, warning=FALSE, eval = runActiveDriverWGSChunk}
 ##### The input data is supposed to be a data.frame with six columns (chr, pos1, pos2, ref, alt, and patient)
 ##### Convert the MAF calls object to the format relevant for ActiveDriverWGS
 ##### NOTE, silent mutations are also included
@@ -836,7 +836,7 @@ if ( !is.null(ActiveDriverWGS.genes) ) {
 }
 ```
 
-```{r ActiveDriverWGS_analysis, comment = NA, message=FALSE, warning=FALSE }
+```{r ActiveDriverWGS_analysis, comment = NA, message=FALSE, warning=FALSE, eval=runActiveDriverWGSChunk }
 ##### ActiveDriverWGS approach for cancer driver discovery (https://htmlpreview.github.io/?https://github.com/reimandlab/ActiveDriverWGSR/blob/master/doc/ActiveDriverWGSR.html#introduction)
 
 ##### Create a list to store MAF info for individual datasets
@@ -1737,11 +1737,13 @@ Selection analyses and cancer driver discovery using [ActiveDriverWGS](https://g
 
 ***
 
+[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} results are **`r if ( runActiveDriverWGSChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
+
 #### Plots
 
 *X-axis* indicates the *number of variants* observed in individual genes and *y-axis* illustrates *global p-values* in -log10 scale. The *size* of the points is proportional to -log10 *p-values* based on all substitutions detected in individual genes. The *colour* scale reflects -log10 *False discovery rate* (FDR), with purple and yellow indicating low and high values, respectively.
 
-```{r ActiveDriverWGS_plot, comment = NA, message=FALSE, warning=FALSE}
+```{r ActiveDriverWGS_plot, comment = NA, message=FALSE, warning=FALSE, eval=runActiveDriverWGSChunk}
 suppressMessages(library(plotly))
 
 ##### Create a list for htmlwidgets
@@ -1790,7 +1792,7 @@ widges.list
 
 Table(s) presenting per-dataset [ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"} results, including *p-values*, *false discovery rate (FDR)*, *number of mutations in individual samples*, as well as the *expected number of mutations in individual samples*.
 
-```{r ActiveDriverWGS_results_summary, comment = NA, message=FALSE, warning=FALSE}
+```{r ActiveDriverWGS_results_summary, comment = NA, message=FALSE, warning=FALSE, eval=runActiveDriverWGSChunk}
 ##### Present dndscv results summary table in the html report
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2415,7 +2417,7 @@ if ( pchangeStatus ) {
 
 ### ActiveDriverWGS {.tabset}
 
-```{r lollipop_plots_ActiveDriverWGS, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r lollipop_plots_ActiveDriverWGS, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runActiveDriverWGSChunk}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -2599,7 +2601,7 @@ cat("\n\n\n")
 
 ### ActiveDriverWGS
 
-```{r mutations_annotation_ActiveDriverWGS, comment = NA, message=FALSE, warning=FALSE}
+```{r mutations_annotation_ActiveDriverWGS, comment = NA, message=FALSE, warning=FALSE, eval = runActiveDriverWGSChunk}
 ##### Present results summary table in the html report
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2816,7 +2818,7 @@ cat("\n\n\n")
 
 #### Non-synonymous
 
-```{r details_mut_ActiveDriverWGS_nonsynon, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_ActiveDriverWGS_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
@@ -2836,7 +2838,7 @@ cat("\n\n\n")
 
 #### Silent
 
-```{r details_mut_ActiveDriverWGS_silent, comment = NA, message=FALSE, warning=FALSE}
+```{r details_mut_ActiveDriverWGS_silent, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
 ##### Provide detiles information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
