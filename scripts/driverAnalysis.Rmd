@@ -856,7 +856,7 @@ for ( i in 1:length(mafFiles) ) {
   ##### Suppress automatic output to console
   sink("/dev/null")
   ##### NOTE: the analysis crash when "recovery.dir" parameter (for storing recovery files) is used so currently it's set to NULL. Once fixed it can be set to "paste(outDir, "ActiveDriverWGS_recovery", sep="/")"
-  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, recovery.dir = NULL, mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
+  ActiveDriverWGS.res[[i]] = ActiveDriverWGS(mutations = ActiveDriverWGSInfo[[i]], elements = elements, sites = NULL, window_size = 50000, recovery.dir = paste(outDir, "ActiveDriverWGS_recovery", sep="/"), mc.cores = params$activedriverwgs_cores, ref_genome = paste0("hg", params$ucsc_genome_assembly)) 
   sink() 
 
   ##### Order the table by element_muts_obs, pp_element, fdr_element and element_enriched
