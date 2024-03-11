@@ -1861,13 +1861,17 @@ Cancer driver genes detection based on positional clustering using [OncodriveClu
 <font size="2">
 
 * P-value for reporting cancer driver genes: **`r params$oncodriveclustl_p`**
+* Q-value for reporting cancer driver genes: **`r params$oncodriveclustl_q`**
 
 </font> 
 </details>
 
 ***
 
-#### Plot
+#### Plot {.tabset}
+
+##### Interactive
+
 
 The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
 
@@ -1890,11 +1894,12 @@ for ( i in 1:length(mafFiles) ) {
     p_exp[ p_exp == 0 ] <- 1*10^-16
     
     ##### Prepare data frame for plotting with plotly
-    data.df <- data.frame(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$TOTAL_MUT )
-    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no")
+    data.df <- data.frame(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$SYMBOL, -log10(q_obs), -log10(p_obs), -log10(p_exp), signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$CLUSTERED_MUT, signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$SCORE)
+    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no", "score")
     
-    ##### Calculate x and y axis rangeby adding 10% of the original range
-    x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    ##### Calculate x and y axis range by adding 10% of the original range
+    #x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
     y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
     
     ##### Generate scatter-plot
@@ -1923,6 +1928,35 @@ detach("package:plotly", unload=FALSE)
 
 ##### Print a list of htmlwidgets
 widges.list
+```
+
+***
+
+##### Static
+
+[Q-Q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot){target="_blank"} with *y-axis* presenting -log10 of the *computed p-values* and *x-axis* the -log10 of the *expected p-values*. 
+
+<span style="color:#ff0000">NOTE</span>, in case of very long list of detected driver genes only the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Cancer driver genes* tab to see the full list).
+
+```{r oncodriveCLUSTL_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodriveclustlChunk}
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the OncodriveCLUSTL results plot exists
+  if ( file.exists(paste0(dirname(oncodriveCLUSTL.res[i]), "/quantile_quantile_plot.png")) ) {
+    
+    ##### Read in the oncodriveFML PNG files
+    cat(paste("\n\n <b>", datasets.list[i], "</b> \n\n", sep=" "))
+    cat("![](",paste(paste0(dirname(oncodriveCLUSTL.res[i]), "/quantile_quantile_plot.png")),")")
+    cat("<br/><br/><br/>")
+
+    ##### Copy the OncodriveCLUSTL results plot (HTML and PNG) to the report folder
+    file.copy(paste0(dirname(oncodriveCLUSTL.res[i]), "/quantile_quantile_plot.png"), paste0(outDir, "/driver_analysis_oncodriveCLUSTL_plot_", datasets.list[i], ".png"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    file.copy(paste0(oncodriveCLUSTL.res[i], ".html"), paste0(outDir, "/driver_analysis_oncodriveCLUSTL_plot_", datasets.list[i], ".html"), overwrite = TRUE, copy.mode = TRUE, copy.date = FALSE)
+    
+  } else {
+    cat(paste("OncodriveCLUSTL results plot \"", paste0(oncodriveCLUSTL.res[i], ".png"), "\" is not present for dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
 ```
 
 ***
