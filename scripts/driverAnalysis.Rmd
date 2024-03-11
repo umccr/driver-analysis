@@ -389,7 +389,7 @@ if ( params$oncodrivefml_conf != "none" ){
 }
 
 ##### Read in OncodriveCLUSTL analysis results (https://bitbucket.org/bbglab/oncodriveclustl/src/master/)
-runOncodrivefmlChunk <- FALSE
+runOncodriveClustlChunk <- FALSE
 
 if ( params$oncodriveclustl != "none" ){
   
@@ -470,9 +470,12 @@ if ( runOncodriveClustlChunk ) {
   methods <- c(methods, "OncodriveCLUSTL")
 }
 
-if ( runactivedriverwgs ) {
+if ( params$runactivedriverwgs ) {
   methods <- c(methods, "ActiveDriverWGS")
   runActiveDriverWGSChunk <- TRUE
+} else {
+  runActiveDriverWGSChunk <- FALSE
+  ActiveDriverWGS.genes <- NULL
 }
 
 if ( runcgiChunk ) {
@@ -1386,7 +1389,8 @@ Based on local neutrality test, in which the number of synonymous mutations in a
 
 ***dNdScv*** is a preferred model in most situations. However, low estimates of theta (θ, the overdispersion parameter), particularly θ < 1, may reflect problems with the suitability of the dNdScv model for the dataset. In these cases, it is reasonable to consider the traditional *dN/dS* (***dNdSloc***) model.
 
-The estimated **θ** value(s) for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
+The estimated **θ** value(s) for substitutions for dataset(s) `r names(unlist(theta))` are: **`r unlist(theta)`**, respectively.
+The estimated **θ** value(s) for indels for dataset(s) `r names(unlist( theta_indels))` are: **`r unlist( theta_indels)`**, respectively.
 
 </details>
 
