@@ -955,16 +955,16 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Order the table by SCORE and P-value
   oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order( oncodriveCLUSTL.res.table[[i]]$SCORE, decreasing = TRUE), ]
-  oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order(oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL), ]
+  oncodriveCLUSTL.res.table[[i]] <- oncodriveCLUSTL.res.table[[i]][ order(oncodriveCLUSTL.res.table[[i]]$P_ANALYTICAL), ]
   rownames(oncodriveCLUSTL.res.table[[i]]) = NULL
   
   ##### Calculate expected p-value
-  oncodriveCLUSTL.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL))
+  oncodriveCLUSTL.res.table[[i]]$P_VALUE_EXP <- ppoints(length(oncodriveCLUSTL.res.table[[i]]$P_ANALYTICAL))
 
   ##### Record significant driver genes for each dataset
   signif_genes.datasets[[i]]$OncodriveCLUSTL <- as.character(oncodriveCLUSTL.res.table[[i]][
-    oncodriveCLUSTL.res.table[[i]]$P_EMPIRICAL <= params$oncodriveclustl_p &
-      oncodriveCLUSTL.res.table[[i]]$Q_EMPIRICAL <= params$oncodriveclustl_q, "SYMBOL"])
+    oncodriveCLUSTL.res.table[[i]]$P_ANALYTICAL <= params$oncodriveclustl_p &
+      oncodriveCLUSTL.res.table[[i]]$Q_ANALYTICAL <= params$oncodriveclustl_q, "SYMBOL"])
   
   ##### Remove NAs
   signif_genes.datasets[[i]]$OncodriveCLUSTL <- signif_genes.datasets[[i]]$OncodriveCLUSTL[ !is.na(signif_genes.datasets[[i]]$OncodriveCLUSTL)]
@@ -1886,9 +1886,9 @@ for ( i in 1:length(mafFiles) ) {
   if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) > 0 ) {
     
     ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
-    q_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$Q_EMPIRICAL
+    q_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$Q_ANALYTICAL
     q_obs[ q_obs == 0 ] <- 1*10^-16
-    p_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$P_EMPIRICAL
+    p_obs <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$P_ANALYTICAL
     p_obs[ p_obs == 0 ] <- 1*10^-16
     p_exp <- signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL$P_VALUE_EXP
     p_exp[ p_exp == 0 ] <- 1*10^-16
@@ -1898,15 +1898,15 @@ for ( i in 1:length(mafFiles) ) {
     colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_no", "score")
     
     ##### Calculate x and y axis range by adding 10% of the original range
-    #x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
-    x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
+    x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    #x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
     y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
     
     ##### Generate scatter-plot
     ##### Check if any of the significant genes have determined q-value
     if ( !all(is.na(data.df$q)) ) {
       
-      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$score, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
         add_text(textfont = list(size = 10), textposition = "top") %>%
         add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
         layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
