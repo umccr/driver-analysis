@@ -268,6 +268,7 @@ suppressMessages(library(UpSetR))
 suppressMessages(library(stringr))
 suppressMessages(library(magick))
 suppressMessages(library(RCircos))
+suppressMessages(library(tibble))
 suppressMessages(library(package=paste0("EnsDb.Hsapiens.v", params$ensembl_version), character.only = TRUE))
 ```
 
@@ -746,6 +747,14 @@ for ( i in 1:length(mafFiles) ) {
   
   signif_genes.methods$dNdScv[[i]] <- as.character(signif_genes_table.datasets[[i]]$dNdScv$gene_name)
   signif_genes.methods$dNdSloc[[i]] <- as.character(signif_genes_table.datasets[[i]]$dNdSloc$gene_name)
+  
+  #### Record significant genes and corresponding p-values (this will be used in summary)
+  signif_genes_p <- vector("list", length(mafFiles))
+  names(signif_genes_p) <- datasets.list
+  signif_genes_p[[i]]$dndscv <- signif_genes_table.datasets[[i]]$dNdScv[c("gene_name", "pglobal_cv")] %>%
+  dplyr::rename(p_dndscv = pglobal_cv)
+  signif_genes_p[[i]]$dndsloc <- signif_genes_table.datasets[[i]]$dNdSloc[c("gene_name", "pall_loc")] %>%
+  dplyr::rename(p_dndsloc = pall_loc)
 }
 ```
 
@@ -895,6 +904,10 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$ActiveDriverWGS <- signif_genes_table.datasets[[i]]$ActiveDriverWGS[ , c("id", "pp_element", "fdr_element", "element_muts_obs", "element_muts_exp")]
+  
+  #### Record significant genes and corresponding p-values (this will be used in summary)
+  signif_genes_p[[i]]$activedriverwgs <- signif_genes_table.datasets[[i]]$ActiveDriverWGS[c("id", "pp_element")] %>%
+  dplyr::rename(gene_name = id, p_activedriverwgs = pp_element)
 }
 
 ##### Remove directory for storing recovery files once analyses are finished
@@ -940,6 +953,10 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$OncodriveFML <- signif_genes_table.datasets[[i]]$OncodriveFML[ , c("SYMBOL", "GENE_ID", "P_VALUE", "P_VALUE_EXP", "Q_VALUE", "MUTS", "MUTS_RECURRENCE", "SAMPLES", "P_VALUE_NEG", "Q_VALUE_NEG", "SNP", "MNP", "INDELS")]
+  
+  #### Record significant genes and corresponding p-values (this will be used in summary)
+  signif_genes_p[[i]]$oncodrivefml <- signif_genes_table.datasets[[i]]$OncodriveFML[c("SYMBOL", "P_VALUE")] %>%
+  dplyr::rename(gene_name = SYMBOL, p_oncodrivefml = P_VALUE)
 }
 ```
 
@@ -979,6 +996,10 @@ for ( i in 1:length(mafFiles) ) {
   
   ##### Organise the table of significant genes
   signif_genes_table.datasets[[i]]$OncodriveCLUSTL <- signif_genes_table.datasets[[i]]$OncodriveCLUSTL[ , c("SYMBOL", "ENSID", "CHROMOSOME", "SCORE", "P_EMPIRICAL", "P_VALUE_EXP", "P_ANALYTICAL", "Q_EMPIRICAL", "Q_ANALYTICAL", "LENGTH", "TOTAL_MUT", "CLUSTERED_MUT", "CLUSTERS", "SIM_CLUSTERS", "P_TOPCLUSTER", "Q_TOPCLUSTER")]
+  
+  #### Record significant genes and corresponding p-values (this will be used in summary)
+  signif_genes_p[[i]]$oncodriveclustl <- signif_genes_table.datasets[[i]]$OncodriveCLUSTL[c("SYMBOL", "P_ANALYTICAL") ] %>%
+  dplyr::rename(gene_name = SYMBOL, p_oncodriveclustl = P_ANALYTICAL)
 }
 ```
 
@@ -1079,6 +1100,9 @@ names(signif_genes.upset.mod) <- datasets.list
 signif_genes <- vector("list", length(mafFiles))
 names(signif_genes) <- datasets.list
 
+all_genes_p <- vector("list", length(mafFiles))
+names(all_genes_p) <- datasets.list
+
 for ( i in 1:length(mafFiles) ) {
   
   signif_genes[[i]] <- verify_genes(unlist(signif_genes.datasets[[i]]))
@@ -1102,24 +1126,36 @@ for ( i in 1:length(mafFiles) ) {
       }
     }
     
+    #### Merge significant genes and the corresponding p-values from different methods
+    all_genes_p[[i]] <- signif_genes_p[[i]]$dndscv %>%
+      dplyr::full_join(signif_genes_p[[i]]$dndsloc, by = "gene_name")
+    
     ##### Add column with summarised counts for each gene and organise the intersections summary table
     signif_genes.upset.mod[[i]] <- as.data.frame(t(signif_genes.upset[[i]]))
     signif_genes.upset.mod[[i]]$Total <- rowSums( signif_genes.upset.mod[[i]] )
     
     if ( "CGI" %in% names(signif_genes.datasets[[i]]) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "CGI"], decreasing = TRUE),  ] 
+      all_genes_p[[i]] <-all_genes_p[[i]] %>%
+        dplyr::full_join(signif_genes_p[[i]]$cgi, by = "gene_name")
     }
     
     if ( "OncodriveFML" %in% names(signif_genes.datasets[[i]]) ) {
-      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ] 
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ]
+      all_genes_p[[i]] <-all_genes_p[[i]] %>%
+        dplyr::full_join(signif_genes_p[[i]]$oncodrivefml, by = "gene_name")
     }
     
     if ( "OncodriveCLUSTL" %in% names(signif_genes.datasets[[i]]) ) {
-      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUSTL"], decreasing = TRUE),  ] 
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveCLUSTL"], decreasing = TRUE),  ]
+      all_genes_p[[i]] <-all_genes_p[[i]] %>%
+        dplyr::full_join(signif_genes_p[[i]]$oncodriveclustl, by = "gene_name")
     }
     
     if ( "ActiveDriverWGS" %in% names(signif_genes.datasets[[i]]) ) {
-      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "ActiveDriverWGS"], decreasing = TRUE),  ] 
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "ActiveDriverWGS"], decreasing = TRUE),  ]
+      all_genes_p[[i]] <-all_genes_p[[i]] %>%
+        dplyr::full_join(signif_genes_p[[i]]$activedriverwgs, by = "gene_name")
     }
     
     signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "Total"], signif_genes.upset.mod[[i]][, "dNdScv"], signif_genes.upset.mod[[i]][, "dNdSloc"], decreasing = TRUE),  ] 
@@ -1129,6 +1165,13 @@ for ( i in 1:length(mafFiles) ) {
       signif_genes.upset.mod[[i]][ signif_genes.upset.mod[[i]][, j] == 1, j ] <- "Yes"
       signif_genes.upset.mod[[i]][ signif_genes.upset.mod[[i]][, j] == 0, j ] <- "No"
     }
+    
+    #### Include p-values for significant genes from driver discovery methods
+    signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]] %>%
+      rownames_to_column("gene_name") %>%
+      dplyr::full_join(all_genes_p[[i]], by = "gene_name") %>%
+      dplyr::filter(!duplicated(gene_name)) %>%  # Remove duplicates
+      column_to_rownames("gene_name")
   }
 }
 ```
@@ -1366,7 +1409,7 @@ if ( params$genes_blacklist != "none" ) {
 
 ### dN/dS {.tabset}
 
-Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
+Selection analyses and cancer driver discovery using [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} R package. It provides *maximum-likelihood dN/dS* methods designed to quantify selection in cancer and somatic evolution ([Martincorena et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"}). The package contains functions for two different models (**dNdScv** and **dNdSloc**) to quantify dN/dS ratios for missense, nonsense and essential splice mutations, at the level of individual genes, groups of genes or at whole-genome level. The [dNdScv](https://github.com/im3sanger/dndscv){target="_blank"} package was designed to detect cancer driver genes (i.e. genes under positive selection in cancer) on datasets ranging from a few samples to thousands of samples, in whole-exome/genome or targeted sequencing studies.
 
 ***
 
@@ -1839,8 +1882,6 @@ widges.list
 ### OncodriveClustl {.tabset}
 
 Cancer driver genes detection based on positional clustering using [OncodriveClustl](https://bbglab.irbbarcelona.org/oncodriveclustl/home){target="_blank"} is a new nucleotide sequence-based clustering algorithm to detect cancer drivers in genomic regions. OncodriveCLUSTL is based on a local background model derived from the nucleotide context mutational probabilities of the cohort under study. , as described in the paper [OncodriveClustl](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Nuria Lopez-Bigas *et al*, 2019](https://academic.oup.com/bioinformatics/article/35/22/4788/5522012?login=false){target="_blank"}.
-
-<span style="color:#ff0000">NOTE</span>: **Only non-synonymous variants** are used for this analysis.
 
 [OncodriveClustl](https://bitbucket.org/bbglab/oncodriveclustl/src/master/){target="_blank"} results are **`r if ( runOncodriveClustlChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
 
