@@ -707,7 +707,7 @@ for ( i in 1:length(mafFiles) ) {
     if ( dNdS_cov ) {
       signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "n_syn", "n_mis", "n_non", "n_spl", "n_ind", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv", "pallsubs_cv", "qallsubs_cv", "wind_cv", "pind_cv")]
     } else {
-      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pallsubs_cv", "qallsubs_cv", "n_syn", "n_mis", "n_non", "n_spl", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv")]
+      signif_genes_table.datasets[[i]]$dNdScv <- signif_genes_table.datasets[[i]]$dNdScv[ , c("gene_name", "pglobal_cv", "qglobal_cv", "pallsubs_cv", "qallsubs_cv", "n_syn", "n_mis", "n_non", "n_spl", "wmis_cv", "pmis_cv",  "wnon_cv", "wspl_cv", "ptrunc_cv")]
     }
   }
 
