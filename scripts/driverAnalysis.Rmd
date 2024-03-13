@@ -1938,7 +1938,7 @@ widges.list
 
 <span style="color:#ff0000">NOTE</span>, in case of very long list of detected driver genes only the most significant *computed p-values* are indicated on the Q-Q plot (check table in the *Cancer driver genes* tab to see the full list).
 
-```{r oncodriveCLUSTL_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodriveclustlChunk}
+```{r oncodriveCLUSTL_plot_static, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=runOncodriveClustlChunk}
 for ( i in 1:length(mafFiles) ) {
   
   ##### Check if the OncodriveCLUSTL results plot exists
@@ -2375,7 +2375,7 @@ cat("\n\n\n")
 
 Lollipop plot(s) showing mutation spots on protein structure for driver genes detected by the following methods: **`r paste(methods, collapse = ", ")`**. Many oncogenes have a preferential sites which are mutated more often than any other locus. These spots are considered to be mutational hot-spots and lollipop plots can be used to display them along with rest of the mutations. <span style="color:#ff0000">NOTE</span>, that lollipop plot(s) are generated for MAF files containing field with amino acid changes details. The longest transcript is used if multiple transcripts are available.
 
-```{r pchange_field_check, comment = NA, message=FALSE, warning=FALSE}
+```{r pchange_field_check, comment = NA, message=FALSE, warning=FALSE, eval = FALSE}
 ##### Check if the protein change field is present in any of the MAFs
 pchangeStatus <- FALSE
 
@@ -2399,7 +2399,7 @@ for ( i in 1:length(mafFiles) ) {
 }
 ```
 
-```{r prot_structre, comment = NA, message=FALSE, warning=FALSE, eval=pchangeStatus}
+```{r prot_structre, comment = NA, message=FALSE, warning=FALSE, eval=FALSE}
 ##### Get list of proteins for which structure is available within maftools
 gff = system.file('extdata', 'protein_domains.RDs', package = 'maftools')
 gff = readRDS(file = gff)
@@ -2407,7 +2407,7 @@ gff = readRDS(file = gff)
 
 ### dNdScv {.tabset}
 
-```{r lollipop_plots_dNdScv, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r lollipop_plots_dNdScv, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=FALSE}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -2437,7 +2437,7 @@ if ( pchangeStatus ) {
 
 ### dNdSloc {.tabset}
 
-```{r lollipop_plots_dNdSloc, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r lollipop_plots_dNdSloc, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=FALSE}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -2501,7 +2501,7 @@ if ( pchangeStatus ) {
 
 `r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL {.tabset}") } else { c(" ") }`
 
-```{r lollipop_plots_OncodriveCLUSTL, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodriveClustlChunk}
+```{r lollipop_plots_OncodriveCLUSTL, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = FALSE}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -2531,7 +2531,7 @@ if ( pchangeStatus ) {
 
 `r if ( runOncodrivefmlChunk ) { c("### OncodriveFML {.tabset}") } else { c(" ") }`
 
-```{r lollipop_plots_OncodriveFML, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = runOncodrivefmlChunk}
+```{r lollipop_plots_OncodriveFML, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = FALSE}
 ##### Generate lollipop plot for each dataset for top mutated genes
 if ( pchangeStatus ) {
   
@@ -3086,7 +3086,7 @@ cat("\n\n\n")
 
 Circos plot showing human chromosome (human genome reference build hg`r params$ucsc_genome_assembly`) ideogram with the cancer driver genes detected by the following methods (*columns*): **`r paste(methods, collapse = ", ")`**.
 
-```{r circos_prep, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r circos_prep, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=FALSE}
 ##### Prepare circos plot with cancer driver genes detected by various methods
 signif_genes.excl <- vector("list", length(mafFiles))
 names(signif_genes.excl) <- datasets.list
@@ -3168,7 +3168,7 @@ for ( i in 1:length(mafFiles) ) {
 }
 ```
 
-```{r circos_plot, comment = NA, message=FALSE, warning=FALSE, results="asis"}
+```{r circos_plot, comment = NA, message=FALSE, warning=FALSE, results="asis", eval=FALSE}
 ##### Present circos plot with cancer driver genes detected by various methods
 for ( i in 1:length(mafFiles) ) {
   if ( length(signif_genes[[i]]) > 0 ) {
