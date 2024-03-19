@@ -75,6 +75,8 @@ option_list <- list(
               help="dNdS method p-value threshold for reporting significant genes"),
   make_option("--dnds_q", action="store", default=1, type='double',
               help="dNdS method q-value threshold for reporting significant genes"),
+  make_option("--runactivedriverwgs", action="store", default=FALSE, type='logical',
+              help="Run ActiveDriverWGS - True or False"),
   make_option("--activedriverwgs_p", action="store", default=0.05, type='double',
               help="ActiveDriverWGS method p-value threshold for reporting significant genes"),
   make_option("--activedriverwgs_fdr", action="store", default=1, type='double',
@@ -83,8 +85,12 @@ option_list <- list(
               help="Number of cores to be used for running ActiveDriverWGS method"),
   make_option("--activedriverwgs_all_genes", action="store", default=FALSE, type='logical',
               help="Run ActiveDriverWGS method for all genes"),
-  make_option("--oncodriveclust_fdr", action="store", default=0.5, type='double',
-              help="OncodriveClust method false discovery rate (FDR) threshold for reporting significant genes"),
+  make_option("--oncodriveclustl", action="store", default="none", type='character',
+              help="Name of folder and the results files from OncoDriveClustl analysis"),
+  make_option("--oncodriveclustl_p", action="store", default=0.01, type='double',
+              help="P-value threshold for reporting OncodriveFML results. Defualt values is 0.1"),
+  make_option("--oncodriveclustl_q", action="store", default=0.1, type='double',
+              help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
   make_option("--ratios_ci", action="store", default=FALSE, type='logical',
               help="Calculate per-gene confidence intervals for the dN/dS ratios"),
   make_option("--hypermut_sample_cutoff", action="store", default=3000, type='integer',
@@ -177,11 +183,14 @@ param_list <- list(maf_dir = opt$maf_dir,
                    samples_id_cols = opt$samples_id_cols,
                    dnds_p = opt$dnds_p,
                    dnds_q = opt$dnds_q,
+                   runactivedriverwgs = opt$runactivedriverwgs,
                    activedriverwgs_p = opt$activedriverwgs_p,
                    activedriverwgs_fdr = opt$activedriverwgs_fdr,
                    activedriverwgs_cores = opt$activedriverwgs_cores,
                    activedriverwgs_all_genes = opt$activedriverwgs_all_genes,
-                   oncodriveclust_fdr = opt$oncodriveclust_fdr,
+                   oncodriveclustl = opt$oncodriveclustl,
+                   oncodriveclustl_p = opt$oncodriveclustl_p,
+                   oncodriveclustl_q = opt$oncodriveclustl_q,
                    ratios_ci = opt$ratios_ci,
                    hypermut_sample_cutoff = opt$hypermut_sample_cutoff,
                    max_muts_per_gene = opt$max_muts_per_gene,
@@ -201,13 +210,13 @@ param_list <- list(maf_dir = opt$maf_dir,
                    ensembl_version = as.numeric(ensembl_version)
 )
 
-##### Pass the user-defined argumentas to the summariseMAFs.R markdown script and run the analysis
+##### Pass the user-defined arguments to the driverAnalysis markdown script and run the analysis
 rmarkdown::render(input = "driverAnalysis.Rmd",
                   output_dir = paste(opt$maf_dir, opt$out_folder, sep = "/"),
                   output_file = paste0(opt$out_folder, ".html"),
                   params = param_list)
 
-##### Remove the assocaited MD file and the redundant folder with plots that are imbedded in the HTML report
+##### Remove the associated MD file and the redundant folder with plots that are embedded in the HTML report
 unlink(paste0(opt$maf_dir, "/", opt$out_folder, "_files"), recursive = TRUE)
 
 ##### Clear workspace

@@ -48,10 +48,12 @@ params:
 Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(",", ", ", params$datasets) `** using the following methods:
 
 * **[dNdScv](https://github.com/im3sanger/dndscv){target="_blank"}** (see paper by [Martincorena *et al*., 2017](https://www.ncbi.nlm.nih.gov/pubmed/29056346){target="_blank"} for details)
-* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu *et al*., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details)
+* **[ActiveDriverWGS](https://github.com/reimandlab/ActiveDriverWGSR){target="_blank"}** (see paper by [Zhu *et al*., 2020](https://pubmed.ncbi.nlm.nih.gov/31954095){target="_blank"} for details - WIP)
 * **[OncodriveClustl](https://bitbucket.org/bbglab/oncodriveclustl/src/master/){target="_blank"}** (see paper by [ Nuria Lopez-Bigas *et al*., 2019](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} for details)
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
+* **[MutPanning](https://www.genepattern.org/modules/docs/MutPanning#gsc.tab=0){target="_blank"}**  (see paper by [Felix *et al*., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7031046/){target="_blank"} for details - WIP)
+* **[CHASMPlus](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html#interpretation){target="_blank"}**  (see paper by [Collin Tokheim *et al*., 2019]https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} for details - WIP)
 
 ***
 
