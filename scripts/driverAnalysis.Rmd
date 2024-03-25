@@ -53,7 +53,7 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 * **[MutPanning](https://www.genepattern.org/modules/docs/MutPanning#gsc.tab=0){target="_blank"}**  (see paper by [Felix *et al*., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7031046/){target="_blank"} for details - WIP)
-* **[CHASMPlus](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html#interpretation){target="_blank"}**  (see paper by [Collin Tokheim *et al*., 2019]https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} for details - WIP)
+* **[CHASMPlus](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html#interpretation){target="_blank"}**  (see paper by [Collin Tokheim *et al*., 2019](https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} for details - WIP)
 
 ***
 
@@ -271,6 +271,7 @@ suppressMessages(library(stringr))
 suppressMessages(library(magick))
 suppressMessages(library(RCircos))
 suppressMessages(library(tibble))
+suppressMessages(library(qvalue))
 suppressMessages(library(package=paste0("EnsDb.Hsapiens.v", params$ensembl_version), character.only = TRUE))
 ```
 
@@ -356,6 +357,28 @@ if ( params$ucsc_genome_assembly == 19 ) {
   dNdS_cov <- TRUE
 } else{
   dNdS_cov <- FALSE
+}
+
+##### Read in ChasmPLUS analysis results (https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html)
+runChasmplusChunk <- FALSE
+
+if ( params$chasmplus != "none" ){
+  
+  chasmPLUS.res <- unlist(strsplit(params$chasmplus, split=',', fixed=TRUE))
+  
+  chasmPLUS.res.table <- vector("list", length(mafFiles))
+  names(chasmPLUS.res.table) <- datasets.list
+  
+  for ( i in 1:length(mafFiles) ) {
+    
+    ##### Read in the results table
+    if ( file.exists(paste0(chasmPLUS.res[i], ".tsv")) ) {
+      
+      chasmPLUS.res.table[[i]] <- read.table(paste0(chasmPLUS.res[i], ".tsv"), sep="\t", as.is=FALSE, header=TRUE, row.names=NULL, skip = 6)
+      
+      runChasmplusChunk <- TRUE
+    }
+  }
 }
 
 ##### Read in OncodriveFML analysis results (https://oncodrivefml.readthedocs.io/en/latest/output.html)
@@ -464,6 +487,10 @@ names(signif_genes_table.datasets) <- datasets.list
 
 ##### Initiate a list to record significant driver genes for each method
 methods <- c("dNdScv", "dNdSloc")
+
+if ( runChasmplusChunk ) {
+  methods <- c(methods, "ChasmPLUS")
+}
 
 if ( runOncodrivefmlChunk ) {
   methods <- c(methods, "OncodriveFML")
@@ -918,6 +945,46 @@ if ( file.exists(paste(outDir, "ActiveDriverWGS_recovery", sep="/")) ){
 }
 ```
 
+```{r chasmPLUS_load_results,  include=FALSE, eval=runChasmplusChunk}
+##### Create a list to store ChasmPLUS info for individual datasets
+signif_genes.methods$ChasmPLUS <- vector("list", length(datasets.list))
+names(signif_genes.methods$ChasmPLUS) <- datasets.list
+
+###### Record results for each dataset
+for ( i in 1:length(mafFiles) ) {
+    
+  ##### Order the table by Gene_p.value
+  chasmPLUS.res.table[[i]] <- chasmPLUS.res.table[[i]][ order(chasmPLUS.res.table[[i]]$Gene_p.value), ]
+  rownames(chasmPLUS.res.table[[i]]) = NULL
+  
+  ##### Calculate expected p-value
+  chasmPLUS.res.table[[i]]$P_value_exp <- ppoints(length(chasmPLUS.res.table[[i]]$Gene_p.value))
+  
+  ##### Calculate q-value from p-value. Using lambda 0 as we have limited set of p-values https://support.bioconductor.org/p/105623/
+  chasmPLUS.res.table[[i]]$Q_value <- qvalue(chasmPLUS.res.table[[i]]$Gene_p.value, lambda = 0)$qvalues
+
+  ##### Record significant driver genes for each dataset
+  signif_genes.datasets[[i]]$ChasmPLUS <- unique(c(as.character(chasmPLUS.res.table[[i]]$Gene)[ chasmPLUS.res.table[[i]]$Gene_p.value <= params$chasmplus_p  ], as.character(chasmPLUS.res.table[[i]]$Gene)[ chasmPLUS.res.table[[i]]$Q_VALUE <= params$chasmplus_q ]))
+  
+  ##### Remove NAs
+  signif_genes.datasets[[i]]$ChasmPLUS <- signif_genes.datasets[[i]]$ChasmPLUS[ !is.na(signif_genes.datasets[[i]]$ChasmPLUS)]
+  
+  ##### Report significant driver genes
+  signif_genes_table.datasets[[i]]$ChasmPLUS <- chasmPLUS.res.table[[i]][ chasmPLUS.res.table[[i]]$Gene %in%  signif_genes.datasets[[i]]$ChasmPLUS , ]
+  rownames(signif_genes_table.datasets[[i]]$ChasmPLUS) = NULL
+  
+  ##### Record significant driver genes for each dataset and method
+  signif_genes.methods$ChasmPLUS[[i]] <- as.vector(signif_genes_table.datasets[[i]]$ChasmPLUS$Gene)
+  
+  ##### Organise the table of significant genes
+  signif_genes_table.datasets[[i]]$ChasmPLUS <- signif_genes_table.datasets[[i]]$ChasmPLUS[ , c("Gene", "Gene_p.value", "P_value_exp", "Q_value", "Number_of.Coding.Variants", "Number_of.Noncoding.Variants", "Sequence_Ontology", "All_Sequence.Ontologies")]
+  
+  #### Record significant genes and corresponding p-values (this will be used in summary)
+  signif_genes_p[[i]]$ChasmPLUS <- signif_genes_table.datasets[[i]]$ChasmPLUS[c("Gene", "Gene_p.value")] %>%
+  dplyr::rename(gene_name = Gene, p_chasmplusl = Gene_p.value)
+}
+```
+
 ```{r oncodriveFML_load_results,  include=FALSE, eval=runOncodrivefmlChunk}
 ##### Create a list to store OncodriveFML info for individual datasets
 signif_genes.methods$OncodriveFML <- vector("list", length(datasets.list))
@@ -950,7 +1017,7 @@ for ( i in 1:length(mafFiles) ) {
   signif_genes_table.datasets[[i]]$OncodriveFML <- oncodriveFML.res.table[[i]][ oncodriveFML.res.table[[i]]$SYMBOL %in%  signif_genes.datasets[[i]]$OncodriveFML , ]
   rownames(signif_genes_table.datasets[[i]]$OncodriveFML) = NULL
   
-  ##### Record sinigficant driver genes for each dataset and method
+  ##### Record significant driver genes for each dataset and method
   signif_genes.methods$OncodriveFML[[i]] <- as.vector(signif_genes_table.datasets[[i]]$OncodriveFML$SYMBOL)
   
   ##### Organise the table of significant genes
@@ -1146,6 +1213,12 @@ for ( i in 1:length(mafFiles) ) {
       signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "OncodriveFML"], decreasing = TRUE),  ]
       all_genes_p[[i]] <-all_genes_p[[i]] %>%
         dplyr::full_join(signif_genes_p[[i]]$oncodrivefml, by = "gene_name")
+    }
+    
+    if ( "ChasmPLUS" %in% names(signif_genes.datasets[[i]]) ) {
+      signif_genes.upset.mod[[i]] <- signif_genes.upset.mod[[i]][ order( signif_genes.upset.mod[[i]][, "ChasmPLUS"], decreasing = TRUE),  ]
+      all_genes_p[[i]] <-all_genes_p[[i]] %>%
+        dplyr::full_join(signif_genes_p[[i]]$ChasmPLUS, by = "gene_name")
     }
     
     if ( "OncodriveCLUSTL" %in% names(signif_genes.datasets[[i]]) ) {
@@ -1881,6 +1954,139 @@ widges.list
 
 ***
 
+### ChasmPlus {.tabset}
+
+Large-scale cancer sequencing studies of patient cohorts have statistically implicated many cancer driver genes, with a long-tail of infrequently mutated genes. [CHASMplus](https://karchinlab.github.io/CHASMplus/info/), a machine learning method to predict driver missense mutations, which is uniquely powered to identify rare driver mutations within the long-tail as described in the paper [ChasmPLUS](https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} by Nuria Collin Tokheim *et al*, 2019.
+
+[ChasmPLUS](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html){target="_blank"} results are **`r if ( runChasmplusChunk ) { c("AVAILABLE") } else { c("NOT AVAILABLE") }`**.
+
+***
+
+<details>
+<summary>Variants consequence definitions</summary>
+<font size="2">
+
+* **Non-synonymous variants** are defined as variants with the following consequences: *`r paste(params$nonSyn_list, collapse = ", ")`*.
+* **Silent variants** are defined as variants with the following consequences: *`r paste(silent_categories, collapse = ", ")`*.
+
+</font> 
+</details>
+
+<details>
+<summary>Input parameters</summary>
+<font size="2">
+
+* P-value for reporting cancer driver genes: **`r params$chasmplus_p`**
+* Q-value for reporting cancer driver genes: **`r params$chasmplus_q`**
+
+</font> 
+</details>
+
+***
+
+#### Plot {.tabset}
+
+##### Interactive
+
+
+The *size* of the points on the scatter-plot(s) is proportional to the *number of clusters* found in individual genes. *X-axis* indicates the *number of variants* observed in these clusters and *y-axis* illustrates *false discovery rate* (FDR) in -log10 scale. The *colour* scale reflects *cluster scores*, with yellow and purple indicating high and low values, respectively. Cluster score of 1 means that a single hotspot hosts all observed variants.
+
+```{r chasmPLUS_plot, comment = NA, message=FALSE, warning=FALSE, eval = runChasmplusChunk}
+suppressMessages(library(plotly))
+
+
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) > 0 ) {
+    
+    ##### Avoid q-values of 0 by assigning 1*10^-16 to extremely low q-values
+    q_obs <- signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS$Q_value
+    q_obs[ q_obs == 0 ] <- 1*10^-4
+    p_obs <- signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS$Gene_p.value
+    p_obs[ p_obs == 0 ] <- 1*10^-4
+    p_exp <- signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS$P_value_exp
+    p_exp[ p_exp == 0 ] <- 1*10^-4
+    
+    ##### Prepare data frame for plotting with plotly
+    data.df <- data.frame(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS$Gene, -log10(q_obs), -log10(p_obs), -log10(p_exp), signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS$Number_of.Coding.Variants)
+    colnames(data.df) <- c("gene", "q", "p_obs", "p_exp", "muts_coding_no")
+    
+    ##### Calculate x and y axis range by adding 10% of the original range
+    x_range <- c(min(data.df$p_exp) - min(data.df$p_exp)*0.1, max(data.df$p_exp) + max(data.df$p_exp)*0.1)
+    #x_range <- c(0, max(data.df$mutations_no) + max(data.df$mutations_no)*0.1)
+    y_range <- c(min(data.df$p_obs) - min(data.df$p_obs)*0.1, max(data.df$p_obs) + max(data.df$p_obs)*0.1)
+    
+    ##### Generate scatter-plot
+    ##### Check if any of the significant genes have determined q-value
+    if ( !all(is.na(data.df$q)) ) {
+      
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, color = data.df$q, size = data.df$muts_coding_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE, showlegend = FALSE, legend = list(orientation = "v", y = 0.9))
+      
+    } else {
+      widges.list[[i]] <- plot_ly(data.df, x = data.df$p_exp, y = data.df$p_obs, size = data.df$muts_no, text = ~gene, mode = "markers",  marker = list(opacity = 0.8, line = list(color = "black", width = 1)), width = 800, height = 400) %>%
+        add_text(textfont = list(size = 10), textposition = "top") %>%
+        add_lines(y = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), x = c(seq(min(data.df$p_obs), min(c(max(data.df$p_obs), max(data.df$p_exp))), length.out=nrow(data.df))), line = list(color = "grey", dash = "dash"), showlegend = FALSE, data = NULL, inherit = FALSE) %>%
+        layout(title = datasets.list[i], xaxis = list(title = "-log10( expected p-values )", range = x_range), yaxis = list(title = "-log10( observed p-values )", range = y_range), margin = list(l=50, r=50, b=50, t=50, pad=4), autosize = FALSE)
+    }
+  
+  } else {
+      cat(paste("None of the mutated genes demonstrated significant p- or q-value in dataset", datasets.list[i], "\n\n", sep=" "))
+  }
+}
+
+##### Detach plotly package. Otherwise it clashes with other graphics devices
+detach("package:plotly", unload=FALSE)
+
+##### Print a list of htmlwidgets
+widges.list
+```
+
+***
+
+#### Cancer driver genes
+
+Table(s) presenting per-dataset [ChasmPLUS](https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} results, including *cluster scores*, *p-values* , *p-values* and *number of mutations in clusters*, as well as the *total number of mutations in clusters*. Cluster score of 1 means that a single hotspot hosts all observed variants.
+
+```{r chasmplus_table, comment=NA, warning=FALSE, eval = runChasmplusChunk}
+##### Generate tables with ChasmPLUS results
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  
+  ##### Check if the field with AA change info is present in given MAF at all
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) != 0 ) {
+    
+    #### Check if the any of the mutated genes demonstrates significant cluster score
+    if ( nrow(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) > 0 ) {
+      
+      widges.list[[i]] <- DT::datatable(data = signif_genes_table.datasets[[i]]$ChasmPLUS, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = 5, dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
+        DT::formatStyle( columns = names(signif_genes_table.datasets[[i]]$ChasmPLUS), 'text-align' = 'center' ) %>%
+    formatRound(columns = c("Gene_p.value", "P_value_exp", "Q_value"), 6)
+      
+    } else {
+      cat(paste("None of the mutated genes demonstrated significant cluster score in dataset", datasets.list[i], "\n\n", sep=" "))
+      runOncodriveClustlChunk <- FALSE
+    }
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+***
+
 ### OncodriveClustl {.tabset}
 
 Cancer driver genes detection based on positional clustering using [OncodriveClustl](https://bbglab.irbbarcelona.org/oncodriveclustl/home){target="_blank"} is a new nucleotide sequence-based clustering algorithm to detect cancer drivers in genomic regions. OncodriveCLUSTL is based on a local background model derived from the nucleotide context mutational probabilities of the cohort under study. , as described in the paper [OncodriveClustl](https://www.ncbi.nlm.nih.gov/pubmed/23884480){target="_blank"} by [Nuria Lopez-Bigas *et al*, 2019](https://academic.oup.com/bioinformatics/article/35/22/4788/5522012?login=false){target="_blank"}.
@@ -2542,6 +2748,36 @@ if ( pchangeStatus ) {
 
 ***
 
+`r if ( runChasmplusChunk ) { c("### ChasmPLUS {.tabset}") } else { c(" ") }`
+
+```{r lollipop_plots_ChasmPLUS, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = FALSE}
+##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  genes <- unique(verify_genes(unlist(signif_genes.methods$ChasmPLUS)))
+  
+  for( i in 1:length(genes) ){
+    cat("\n#### ", genes[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.methods$ChasmPLUS)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
+
+} else {
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
+}
+```
+
 `r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL {.tabset}") } else { c(" ") }`
 
 ```{r lollipop_plots_OncodriveCLUSTL, echo=FALSE, comment = NA, message=FALSE, warning=FALSE, results="asis", eval = FALSE}
@@ -2830,7 +3066,7 @@ Tables with detailed variant's information in affected samples, as as provided i
 #### Non-synonymous
 
 ```{r details_mut_dNdScv_nonsynon, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -2850,7 +3086,7 @@ cat("\n\n\n")
 #### Silent
 
 ```{r details_mut_dNdScv_silent, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -2872,7 +3108,7 @@ cat("\n\n\n")
 #### Non-synonymous
 
 ```{r details_mut_dNdSloc_nonsynon, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -2892,7 +3128,7 @@ cat("\n\n\n")
 #### Silent
 
 ```{r details_mut_dNdSloc_silent, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -2914,7 +3150,7 @@ cat("\n\n\n")
 #### Non-synonymous
 
 ```{r details_mut_ActiveDriverWGS_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -2934,12 +3170,62 @@ cat("\n\n\n")
 #### Silent
 
 ```{r details_mut_ActiveDriverWGS_silent, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
 for ( i in 1:length(mafFiles) ) {
   widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ActiveDriverWGS[[i]], type = "silent")
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+`r if ( runChasmplusChunk ) { c("***") } else { c(" ") }`
+
+`r if ( runChasmplusChunk ) { c("### ChamPLUS {.tabset .tabset-fade}") } else { c(" ") }`
+
+`r if ( runChasmplusChunk ) { c("#### Non-synonymous") } else { c(" ") }`
+
+```{r details_mut_ChasmPLUS_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runChasmplusChunk}
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ChasmPLUS[[i]], type = "nonsynonymous")
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
+}
+
+##### Print a list of htmlwidgets
+widges.list
+
+##### Add extra lines to make sure that this section doesn't overlap with the next one
+cat("\n\n\n")
+```
+
+`r if ( runChasmplusChunk ) { c("***") } else { c(" ") }`
+
+`r if ( runChasmplusChunk ) { c("#### Silent") } else { c(" ") }`
+
+```{r details_mut_ChasmPLUS_silent, comment = NA, message=FALSE, warning=FALSE, eval = runChasmplusChunk}
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
+##### Create a list for htmlwidgets
+widges.list <- htmltools::tagList()
+
+for ( i in 1:length(mafFiles) ) {
+  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) != 0 ) {
+    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ChasmPLUS[[i]], type = "silent")
+  } else {
+    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+  }
 }
 
 ##### Print a list of htmlwidgets
@@ -2956,7 +3242,7 @@ cat("\n\n\n")
 `r if ( runOncodriveClustlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
 
 ```{r details_mut_OncodriveCLUSTL_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
@@ -3006,7 +3292,7 @@ cat("\n\n\n")
 `r if ( runOncodrivefmlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
 
 ```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodrivefmlChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
+##### Provide detailed information for each dataset for user-defined number of top mutated genes
 ##### Create a list for htmlwidgets
 widges.list <- htmltools::tagList()
 
