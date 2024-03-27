@@ -53,7 +53,7 @@ Selection analyses and cancer driver discovery results for dataset(s) **`r gsub(
 * **[OncodriveFML](https://bitbucket.org/bbglab/oncodrivefml.git){target="_blank"}** (see paper by [Mularoni *et al*., 2016](https://www.ncbi.nlm.nih.gov/pubmed/27311963){target="_blank"} for details)
 * **[Cancer Genome Interpreter](https://www.cancergenomeinterpreter.org/rest_api){target="_blank"}** (CGI) (see paper by [Tamborero *et al*., 2018](https://www.ncbi.nlm.nih.gov/pubmed/29592813){target="_blank"} for details)
 * **[MutPanning](https://www.genepattern.org/modules/docs/MutPanning#gsc.tab=0){target="_blank"}**  (see paper by [Felix *et al*., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7031046/){target="_blank"} for details - WIP)
-* **[CHASMPlus](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html#interpretation){target="_blank"}**  (see paper by [Collin Tokheim *et al*., 2019](https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} for details - WIP)
+* **[CHASMPlus](https://chasmplus.readthedocs.io/en/latest/quickstart_opencravat.html#interpretation){target="_blank"}**  (see paper by [Collin Tokheim *et al*., 2019](https://pubmed.ncbi.nlm.nih.gov/31202631/){target="_blank"} for details)
 
 ***
 
@@ -256,6 +256,22 @@ saveWidgetFix <- function ( widget, file, ...) {
   setwd(outDir);
   htmlwidgets::saveWidget(widget,file=file,...)
 }
+
+dt_view <- function(x, caption = NULL, scroll_y = 10 + min(nrow(x) * 35, 570), ...) {
+  x |>
+    DT::datatable(
+      filter = list(position = "top", clear = FALSE, plain = TRUE),
+      class = "cell-border display compact",
+      rownames = FALSE,
+      extensions = c("Scroller", "Buttons", "KeyTable"),
+      options = list(
+        scroller = TRUE, scrollY = scroll_y, scrollX = TRUE,
+        autoWidth = FALSE, keys = TRUE,
+        buttons = c("csv"), dom = "Blfrtip"
+      ),
+      ...
+    )
+}
 ```
 
 ```{r load_libraries, warning=FALSE}
@@ -272,6 +288,7 @@ suppressMessages(library(magick))
 suppressMessages(library(RCircos))
 suppressMessages(library(tibble))
 suppressMessages(library(qvalue))
+suppressMessages(library(htmltools))
 suppressMessages(library(package=paste0("EnsDb.Hsapiens.v", params$ensembl_version), character.only = TRUE))
 ```
 
@@ -2874,175 +2891,67 @@ Table(s) with detailed annotation of **coding mutations** (detected by the follo
 
 <span style="color:#ff0000">NOTE</span>: mutations detected in non-coding genomic regions, e.g. those shortlisted by *OncodriveFML*, are not listed in the table(s) below.
 
-### dNdScv
+```{r mutation_annotation_tabs, comment = NA, message=FALSE, warning=FALSE}
+# Create a list to store the subset results
+l1 <- list()
 
-```{r mutations_annotation_dNdScv, comment = NA, message=FALSE, warning=FALSE}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$dNdScv[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-### dNdSloc
-
-```{r mutations_annotation_dNdSloc, comment = NA, message=FALSE, warning=FALSE}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$dNdSloc[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-### ActiveDriverWGS
-
-```{r mutations_annotation_ActiveDriverWGS, comment = NA, message=FALSE, warning=FALSE, eval = runActiveDriverWGSChunk}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$ActiveDriverWGS[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL") } else { c(" ") }`
-
-```{r mutations_annotation_OncodriveCLUSTL, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
-    
-    annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveCLUSTL[[i]], ]
-  
-    ##### Move gene name to the first column
-    col_idx <- grep("gene", names(annotmuts))
-    annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-    
-    widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-  
-  } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+# Iterate over each element of signif_genes.methods
+for (i in 1:length(mafFiles)) {
+  for (j in 1:length(signif_genes.methods)) {
+    # Apply subset condition and store the result in the l1 list
+    l1[[j]] <-
+      dt_view(dndsout[[i]]$annotmuts[dndsout[[i]]$annotmuts$gene %in% signif_genes.methods[[j]][[i]],])
   }
 }
 
-##### Print a list of htmlwidgets
-widges.list
+# Set names of the subset_results list
+names(l1) <- names(signif_genes.methods)
 
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodrivefmlChunk ) { c("### OncodriveFML") } else { c(" ") }`
-
-```{r mutations_annotation_OncodriveFML, comment = NA, message=FALSE, warning=FALSE, eval=runOncodrivefmlChunk}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$OncodriveFML[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runcgiChunk ) { c("### CGI") } else { c(" ") }`
-
-```{r mutations_annotation_CGI, comment = NA, message=FALSE, warning=FALSE, eval=runcgiChunk}
-##### Present results summary table in the html report
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  
-  annotmuts <- dndsout[[i]]$annotmuts[ dndsout[[i]]$annotmuts$gene %in% signif_genes.methods$CGI[[i]], ]
-  
-  ##### Move gene name to the first column
-  col_idx <- grep("gene", names(annotmuts))
-  annotmuts <- subset(annotmuts, select=c(names(annotmuts)[c(col_idx, c(1:ncol(annotmuts))[-col_idx])]))
-  
-  widges.list[[i]] <- DT::datatable( data = annotmuts, caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', htmltools::strong(datasets.list[i])), filter = "top", extensions = c('Buttons','FixedColumns','Scroller'), options = list(pageLength = nrow(annotmuts), dom = 'Bfrtip', buttons = c('excel', 'csv', 'pdf','copy','colvis'), scrollX = TRUE, fixedColumns = list(leftColumns = 2), deferRender = TRUE, scrollY = 200, scroller = TRUE), width = 800,  escape = FALSE ) %>%
-        DT::formatStyle( columns = names(annotmuts), 'text-align' = 'center' )
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
+div(
+  # create the tabs with titles as a ul with li/a
+  tags$ul(
+    class = "nav nav-pills",
+    role = "tablist",
+    lapply(
+      names(l1),
+      function(nm){
+        tags$li(
+          class=ifelse(nm == names(l1)[i], "active", ""),
+          tags$a(
+            "data-toggle" = "tab",
+            "role" = "tab",
+            href = paste0("#tab1-", nm),
+            nm
+          )
+        )
+      }
+    )
+  ),
+  # fill the tabs with our plots
+  tags$div(
+    class = "tab-content",
+    lapply(
+      names(l1),
+      function(nm){
+        tags$div(
+          #  make the first tabpane active
+          class=ifelse(nm == names(l1)[i], "tab-pane active", "tab-pane"),
+          #  id will need to match the id provided to the a href above
+          id = paste0("tab1-", nm),
+          plotly::as_widget(l1[[nm]])
+        )
+      }
+    )
+  )
+) |>
+  # attach the necessary dependencies
+  #  since we are manually doing what rmarkdown magically does for us
+  htmltools::attachDependencies(
+    list(
+      rmarkdown::html_dependency_jquery(),
+      shiny::bootstrapLib()
+    )
+  )
 ```
 
 ***
