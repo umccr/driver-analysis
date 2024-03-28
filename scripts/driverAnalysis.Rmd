@@ -177,7 +177,8 @@ mut.details.datasets <- function(mafInfo, datasets, genes, type = "nonsynonymous
   }
   
   ##### Print a list of htmlwidgets
-  widges.list
+  #widges.list
+  return(mut.details.genes)
 }
 
 ###### Generate lollipop plot for each dataset for selected gene
@@ -188,7 +189,7 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
     
     mut = subsetMaf(maf = mafInfo[[dataset]], includeSyn = FALSE, genes = gene, mafObj = FALSE, query = "Variant_Type != 'CNV'")
     
-    ##### Check if the gene has any mutations in correspoding dataset
+    ##### Check if the gene has any mutations in corresponding dataset
     if ( nrow(mut) != 0 ) {
       
       ##### Drawing lollipop for the top 10 genes in each dataset
@@ -2958,7 +2959,7 @@ div(
 
 ## Mutation details {.tabset .tabset-fade}
 
-Tables with detailed variant's information in affected samples, as as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(methods, collapse = ", ")`**.
+Tables with detailed information for nonsynonymous variants in affected samples, as provided in corresponding MAF file(s), for cancer driver genes detected by the following methods: **`r paste(methods, collapse = ", ")`**.
 
 <details>
 <summary>Variants consequence definitions</summary>
@@ -2970,312 +2971,68 @@ Tables with detailed variant's information in affected samples, as as provided i
 </font> 
 </details>
 
-### dNdScv {.tabset .tabset-fade}
+```{r mutation_details_tabs, comment = NA, message=FALSE, warning=FALSE}
+# Create a list to store the subset results
+l2 <- list()
 
-#### Non-synonymous
-
-```{r details_mut_dNdScv_nonsynon, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdScv[[i]], type = "nonsynonymous")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-#### Silent
-
-```{r details_mut_dNdScv_silent, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdScv[[i]], type = "silent")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-### dNdSloc {.tabset .tabset-fade}
-
-#### Non-synonymous
-
-```{r details_mut_dNdSloc_nonsynon, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdSloc[[i]], type = "nonsynonymous")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-#### Silent
-
-```{r details_mut_dNdSloc_silent, comment = NA, message=FALSE, warning=FALSE}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$dNdSloc[[i]], type = "silent")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-### ActiveDriverWGS {.tabset .tabset-fade}
-
-#### Non-synonymous
-
-```{r details_mut_ActiveDriverWGS_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ActiveDriverWGS[[i]], type = "nonsynonymous")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-***
-
-#### Silent
-
-```{r details_mut_ActiveDriverWGS_silent, comment = NA, message=FALSE, warning=FALSE, eval= runActiveDriverWGSChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ActiveDriverWGS[[i]], type = "silent")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runChasmplusChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runChasmplusChunk ) { c("### ChamPLUS {.tabset .tabset-fade}") } else { c(" ") }`
-
-`r if ( runChasmplusChunk ) { c("#### Non-synonymous") } else { c(" ") }`
-
-```{r details_mut_ChasmPLUS_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runChasmplusChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ChasmPLUS[[i]], type = "nonsynonymous")
-  } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
+# Iterate over each element of signif_genes.methods
+for (i in 1:length(mafFiles)) {
+  for (j in 1:length(signif_genes.methods)) {
+    # Apply subset condition and store the result in the l2 list - only displaying nonsynonymous for now (other option for example is - silent)
+    if ( length(signif_genes_table.datasets[[datasets.list[i]]][[j]]) != 0 ) {
+      l2[[j]] <- dt_view(mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods[[j]][[i]], type = "nonsynonymous"))
+    }
   }
 }
 
-##### Print a list of htmlwidgets
-widges.list
+# Set names of the subset_results list
+names(l2) <- names(signif_genes.methods)
 
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runChasmplusChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runChasmplusChunk ) { c("#### Silent") } else { c(" ") }`
-
-```{r details_mut_ChasmPLUS_silent, comment = NA, message=FALSE, warning=FALSE, eval = runChasmplusChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$ChasmPLUS) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$ChasmPLUS[[i]], type = "silent")
-  } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
-  }
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodriveClustlChunk ) { c("### OncodriveCLUSTL {.tabset .tabset-fade}") } else { c(" ") }`
-
-`r if ( runOncodriveClustlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
-
-```{r details_mut_OncodriveCLUSTL_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUSTL[[i]], type = "nonsynonymous")
-  } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
-  }
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodriveClustlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodriveClustlChunk ) { c("#### Silent") } else { c(" ") }`
-
-```{r details_mut_OncodriveCLUSTL_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodriveClustlChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  if ( length(signif_genes_table.datasets[[datasets.list[i]]]$OncodriveCLUSTL) != 0 ) {
-    widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveCLUSTL[[i]], type = "silent")
-  } else {
-    cat(paste("This section was skipped for dataset", datasets.list[i], "since the corresponding MAF does not contain field with amino acid changes details!\n\n", sep=" "))
-  }
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodrivefmlChunk ) { c("### OncodriveFML {.tabset .tabset-fade}") } else { c(" ") }`
-
-`r if ( runOncodrivefmlChunk ) { c("#### Non-synonymous") } else { c(" ") }`
-
-```{r details_mut_OncodriveFML_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runOncodrivefmlChunk}
-##### Provide detailed information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveFML[[i]], type = "nonsynonymous")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runOncodrivefmlChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runOncodrivefmlChunk ) { c("#### Silent") } else { c(" ") }`
-
-```{r details_mut_OncodriveFML_silent, comment = NA, message=FALSE, warning=FALSE, eval = runOncodrivefmlChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$OncodriveFML[[i]], type = "silent")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runcgiChunk ) { c("### CGI {.tabset .tabset-fade}") } else { c(" ") }`
-
-`r if ( runcgiChunk ) { c("#### Non-synonymous") } else { c(" ") }`
-
-```{r details_mut_CGI_nonsynon, comment = NA, message=FALSE, warning=FALSE, eval = runcgiChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$CGI[[i]], type = "nonsynonymous")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
-```
-
-`r if ( runcgiChunk ) { c("***") } else { c(" ") }`
-
-`r if ( runcgiChunk ) { c("#### Silent") } else { c(" ") }`
-
-```{r details_mut_CGI_silent, comment = NA, message=FALSE, warning=FALSE, eval = runcgiChunk}
-##### Provide detiles information for each dataset for user-defined number of top mutated genes
-##### Create a list for htmlwidgets
-widges.list <- htmltools::tagList()
-
-for ( i in 1:length(mafFiles) ) {
-  widges.list[[i]] <- mut.details.datasets(mafInfo[i], datasets.list[i], signif_genes.methods$CGI[[i]], type = "silent")
-}
-
-##### Print a list of htmlwidgets
-widges.list
-
-##### Add extra lines to make sure that this section doesn't overlap with the next one
-cat("\n\n\n")
+div(
+  # create the tabs with titles as a ul with li/a
+  tags$ul(
+    class = "nav nav-pills",
+    role = "tablist",
+    lapply(
+      names(l2),
+      function(nm){
+        tags$li(
+          class=ifelse(nm == names(l2)[i], "active", ""),
+          tags$a(
+            "data-toggle" = "tab",
+            "role" = "tab",
+            href = paste0("#tab1-", nm),
+            nm
+          )
+        )
+      }
+    )
+  ),
+  # fill the tabs with our plots
+  tags$div(
+    class = "tab-content",
+    lapply(
+      names(l2),
+      function(nm){
+        tags$div(
+          #  make the first tabpane active
+          class=ifelse(nm == names(l2)[i], "tab-pane active", "tab-pane"),
+          #  id will need to match the id provided to the a href above
+          id = paste0("tab1-", nm),
+          plotly::as_widget(l2[[nm]])
+        )
+      }
+    )
+  )
+) |>
+  # attach the necessary dependencies
+  #  since we are manually doing what rmarkdown magically does for us
+  htmltools::attachDependencies(
+    list(
+      rmarkdown::html_dependency_jquery(),
+      shiny::bootstrapLib()
+    )
+  )
 ```
 
 ***
