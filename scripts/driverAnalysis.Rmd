@@ -248,6 +248,34 @@ lollipops.datasets <- function(mafInfo, datasets, gene) {
   }
 }
 
+lollipops.methods <- function(pchangeStatus, mafInfo, datasets, signif_genes.met) {
+  ##### Generate lollipop plot for each dataset for top mutated genes
+if ( pchangeStatus ) {
+  
+  output_plot <- list()
+  genes <- unique(verify_genes(unlist(signif_genes.met)))
+  
+  for( i in 1:length(genes) ){
+    cat("\n#### ", verify_genes(genes)[i], "\n")
+    if ( nrow(gff[HGNC %in% genes[i]]) != 0 ) {
+      try(lollipops.datasets(mafInfo = mafInfo, datasets  = datasets.list, gene  = genes[i]), silent = TRUE)
+      cat("\n\n***\n")
+    } else {
+      cat(paste("The protein structure for protein encoded by", unlist(signif_genes.met)[i], "is not available\n\n", sep=" "))
+      cat("\n***\n")
+    }
+  }
+  
+  ##### Clean the space
+  rm(list = ls(pattern='^output*'))
+
+} else {
+  cat("\n***\n")
+  cat("\nThis section was skipped since the field with **amino acid changes details** in provided MAF(s) is **NOT AVAILABLE**!\n")
+  cat("\n***\n")
+}
+}
+
 ##### A wrapper to saveWidget which compensates for arguable BUG in saveWidget which requires `file` to be in current working directory (see post https://github.com/ramnathv/htmlwidgets/issues/299 )
 saveWidgetFix <- function ( widget, file, ...) {
   wd<-getwd()
