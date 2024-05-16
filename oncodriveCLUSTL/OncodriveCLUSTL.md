@@ -153,11 +153,11 @@ Helper function `evaluate_enrichment_method` for this specific step is in [selec
 The output results are written to a txt file [calculate_ks.txt](./output/calculate_ks_enrich.txt). For PDAC data, the best configurations is:
 
 ```
-Directory             sim40_smo41_clus25
-KS Statistic                     0.30801
-KS P-value                      0.000723
-Number of P-values                    40
-ENRICH_LOG                      4.789501
+Directory             sim35_smo30_clus60
+KS Statistic                    0.303627
+KS P-value                           0.0
+Number of P-values                  1000
+ENRICH_LOG                      6.709124
 ```
 
 <br />
