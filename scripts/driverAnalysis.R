@@ -33,16 +33,19 @@
 #   genes_list (optional):  Location and name of a file listing genes of interest to be considered in the report. The genes are expected to be listed in first column
 #   genes_blacklist (optional):  Location and name of a file listing genes to be excluded. Header is not expected and the genes should be listed in separate lines
 #   nonSyn_list (optional):   List of variant classifications to be considered as non-synonymous. Rest will be considered as silent variants
-#   oncodrivefml (optional):   Name of folder and the results files from OncodriveFML analysis
-#   oncodrivefml_p (optional):   P-value threshold for reporting OncodriveFML results. Defualt values is 0.1
-#   oncodrivefml_q (optional):   Q-value threshold for reporting OncodriveFML results. Defualt values is 0.001
+#   chasmplus:  Name of folder and the results files from chasmplus analysis
+#   chasmplus_p: P-value threshold for reporting chasmplus results. Defualt values is 0.01
+#   chasmplus_q: Q-value threshold for reporting chasmplus results. Defualt values is 0.0011alysis
+#   oncodrivefml_p (optional):   P-value threshold for reporting OncodriveFML results. Defualt values is 0.01
+#   oncodrivefml_q (optional):   Q-value threshold for reporting OncodriveFML results. Defualt values is 0.1
 #   oncodrivefml_conf (optional):   Directory and name of OncodriveFML configuration file
 #   cgi (optional):   Name of folder and the results files from Cancer Genome Interpreter (CGI) analysis
 #   clinical_info (optional):  Location of clinical data associated with each sample in MAF. Each file name (for each dataset) is expected to be separated by comma
 #	  remove_duplicated_variants (optional):		Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene? Defulat value is "FALSE"
 #   out_folder:   Name for the output folder that will be created within the directory with MAF files. If no output folder is specified the results will be saved in folder "Driver_analysis_report"
 #   hide_code_btn: Hide the "Code" button allowing to show/hide code chunks in the final HTML report. Available options are: "TRUE" (default) and "FALSE"
-#   ucsc_genome_assembly:  Human reference genome version used for signature analysis (default is "19")
+#   ucsc_genome_assembly:  Human reference genome version used for signature analysis (default is "38")
+#   cancer_genes: Set of target cancer genes
 #
 ################################################################################
 
@@ -88,9 +91,9 @@ option_list <- list(
   make_option("--oncodriveclustl", action="store", default="none", type='character',
               help="Name of folder and the results files from OncoDriveClustl analysis"),
   make_option("--oncodriveclustl_p", action="store", default=0.01, type='double',
-              help="P-value threshold for reporting OncodriveFML results. Defualt values is 0.1"),
+              help="P-value threshold for reporting OncodriveCLUSTL results. Defualt values is 0.1"),
   make_option("--oncodriveclustl_q", action="store", default=0.1, type='double',
-              help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
+              help="Q-value threshold for reporting OncodriveCLUSTL results. Defualt values is 0.01"),
   make_option("--ratios_ci", action="store", default=FALSE, type='logical',
               help="Calculate per-gene confidence intervals for the dN/dS ratios"),
   make_option("--hypermut_sample_cutoff", action="store", default=3000, type='integer',
@@ -107,12 +110,18 @@ option_list <- list(
               help="Location and name of a file listing samples to be excluded"),
   make_option("--nonSyn_list", action="store", default=NA, type='character',
               help="List of variant classifications to be considered as non-synonymous"),
+  make_option("--chasmplus", action="store", default="none", type='character',
+              help="Name of folder and the results files from chasmplus analysis"),
+  make_option("--chasmplus_p", action="store", default=0.01, type='double',
+              help="P-value threshold for reporting chasmplus results. Defualt values is 0.1"),
+  make_option("--chasmplus_q", action="store", default=0.1, type='double',
+              help="Q-value threshold for reporting chasmplus results. Defualt values is 0.01"),
   make_option("--oncodrivefml", action="store", default="none", type='character',
               help="Name of folder and the results files from OncodriveFML analysis"),
   make_option("--oncodrivefml_p", action="store", default=0.01, type='double',
-              help="P-value threshold for reporting OncodriveFML results. Defualt values is 0.1"),
+              help="P-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
   make_option("--oncodrivefml_q", action="store", default=0.1, type='double',
-              help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.01"),
+              help="Q-value threshold for reporting OncodriveFML results. Defualt values is 0.1"),
   make_option("--oncodrivefml_conf", action="store", default="none", type='character',
               help="Directory and name of OncodriveFML configuration file"),
   make_option("--cgi", action="store", default="none", type='character',
@@ -123,8 +132,10 @@ option_list <- list(
               help="Remove repeated variants in a particuar sample, mapped to multiple transcripts of same gene?"),
   make_option("--hide_code_btn", action="store", default=TRUE, type='logical',
               help="Hide the \"Code\" button allowing to show/hide code chunks in the final HTML report"),
-  make_option("--ucsc_genome_assembly", action="store", default=19, type='integer',
-              help="human reference genome version used for signature analysis")
+  make_option("--ucsc_genome_assembly", action="store", default=38, type='integer',
+              help="human reference genome version used for signature analysis"),
+  make_option("--cancer_genes", action="store", default=NA, type='character',
+              help="Target cancer gene set")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -136,21 +147,21 @@ opt$datasets <- gsub("\\s","", opt$datasets)
 
 ##### Read in argument from command line and check if all were provide by the user
 if (is.na(opt$maf_dir) || is.na(opt$maf_files) || is.na(opt$datasets) ) {
-  
+
   cat("\nPlease type in required arguments!\n\n")
   cat("\ncommand example:\n\nRscript driverAnalysis.R --maf_dir /data --maf_filessimple_somatic_mutation.open.PACA-AU.maf,PACA-CA.icgc.simple_somatic_mutation.maf --datasets ICGC-PACA-AU,ICGC-PACA-CA --dnds_p 0.05 --ratios_ci FALSE --hypermut_sample_cutoff 1000 --max_muts_per_gene 3 --ucsc_genome_assembly 19 --out_folder Driver_analysis_report\n\n")
   q()
-  
+
 } else if ( length(unlist(strsplit(opt$maf_files, split=',', fixed=TRUE))) != length(unlist(strsplit(opt$datasets, split=',', fixed=TRUE))) ) {
-  
+
   cat("\nMake sure that the number of datasets names match the number of queried MAF files\n\n")
   q()
 }
 
 if ( !is.na(opt$samples_id_cols) && length(unlist(strsplit(opt$maf_files, split=',', fixed=TRUE))) != length(unlist(strsplit(opt$samples_id_cols, split=',', fixed=TRUE))) ) {
-  
+
   cat("\nMake sure that the number of samples' ID columns match the number of queried MAF files\n\n")
-  
+
   q()
 }
 
@@ -169,7 +180,7 @@ if ( opt$ucsc_genome_assembly !=19 && opt$ucsc_genome_assembly !=38   ) {
 
 if ( opt$ucsc_genome_assembly == 19 ) {
   ensembl_version <- 75
-  
+
 } else if ( opt$ucsc_genome_assembly == 38 ) {
   ensembl_version <- 86
 }
@@ -200,6 +211,9 @@ param_list <- list(maf_dir = opt$maf_dir,
                    genes_blacklist = opt$genes_blacklist,
                    samples_blacklist = opt$samples_blacklist,
                    nonSyn_list = opt$nonSyn_list,
+                   chasmplus = opt$chasmplus,
+                   chasmplus_p = opt$chasmplus_p,
+                   chasmplus_q = opt$chasmplus_q,
                    oncodrivefml = opt$oncodrivefml,
                    oncodrivefml_p = opt$oncodrivefml_p,
                    oncodrivefml_q = opt$oncodrivefml_q,
@@ -207,7 +221,8 @@ param_list <- list(maf_dir = opt$maf_dir,
                    cgi = opt$cgi, clinical_info = opt$clinical_info,
                    remove_duplicated_variants = opt$remove_duplicated_variants,
                    hide_code_btn = opt$hide_code_btn,
-                   ensembl_version = as.numeric(ensembl_version)
+                   ensembl_version = as.numeric(ensembl_version),
+                   cancer_genes = opt$cancer_genes
 )
 
 ##### Pass the user-defined arguments to the driverAnalysis markdown script and run the analysis
