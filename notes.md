@@ -50,4 +50,6 @@ Propose to construct the background model using the degree of clustering of syno
 
 Detailed discussion on the installtion and usage of the tool can be found in [OncodriveCLUSTL.md](`./oncodriveCLUSTL/OncodriveCLUSTL.md`).
 
+**Results**
 
+The results for driver and mutation analysis for PDAC atlas, KRAS-wt and IPMNs are now in GDrive `UMCCR/Projects/PDAC/driver-analysis`
